@@ -1,7 +1,8 @@
 //background.js 
 
 // Configuration constants
-const MEMORY_SEARCH_THRESHOLD = 0.3;  
+const GOOGLE_API_KEY = 'AIzaSyDAdu_kfOKPTJiwJZeSxYkT3KxEfSQlPb0';
+const MEMORY_SEARCH_THRESHOLD = 0.3;  // Lowered from 0.2
 const USER_MESSAGE_CHAR_LIMIT = 4000;
 const EMBEDDING_BYTE_LIMIT = 1000;
 const DB_NAME = 'MemoryVaultDB';
@@ -52,50 +53,66 @@ const TOPIC_CATEGORIES = {
     LOCATION: ['location', 'place', 'address', 'city', 'country', 'region', 'area', 'neighborhood', 'residence', 'living', 'moving', 'relocation']
 };
 
-// Simplify topic relevance calculation
+// Helper function to detect topic relevance
 function getTopicRelevance(text, queryText) {
-    // Add null checks and default values
-    text = (text || '').toLowerCase();
-    queryText = (queryText || '').toLowerCase();
+    // Add safety checks for undefined inputs
+    if (!text || !queryText) return 1;  // Return neutral weight if either input is missing
     
-    const getTopics = text => Object.entries(TOPIC_CATEGORIES)
-        .filter(([_, keywords]) => keywords.some(kw => text.includes(kw)))
-        .map(([category]) => category);
+    text = text.toLowerCase();
+    queryText = queryText.toLowerCase();
     
-    const queryTopics = getTopics(queryText);
-    if (!queryTopics.length) return 1;
+    // Determine query topics
+    const queryTopics = Object.entries(TOPIC_CATEGORIES).filter(([category, keywords]) => 
+        keywords.some(keyword => queryText.includes(keyword))
+    ).map(([category]) => category);
     
-    const memoryTopics = getTopics(text);
-    return memoryTopics.some(topic => queryTopics.includes(topic)) ? 2.0 : 0.5;
+    // If no specific topics detected in query, return 1 (neutral weight)
+    if (queryTopics.length === 0) return 1;
+    
+    // Check if memory matches query topics
+    const memoryTopics = Object.entries(TOPIC_CATEGORIES).filter(([category, keywords]) => 
+        keywords.some(keyword => text.includes(keyword))
+    ).map(([category]) => category);
+    
+    // Calculate topic relevance score
+    const topicMatch = queryTopics.some(topic => memoryTopics.includes(topic));
+    return topicMatch ? 2.0 : 0.5; // Boost matching topics, penalize non-matching
 }
 
 // Function to get embedding from Google API
 async function getEmbedding(text) {
-    const result = await chrome.storage.local.get('google_api_key');
-    const apiKey = result.google_api_key;
+    console.log('Fetching embedding for text:', text);
     
-    if (!apiKey) {
-        throw new Error('Google API key not found');
-    }
-
-    const limitedText = new TextDecoder('utf-8').decode(
-        new TextEncoder().encode(text).slice(0, EMBEDDING_BYTE_LIMIT)
-    );
+    const encoder = new TextEncoder();
+    const encodedText = encoder.encode(text);
+    const slicedText = encodedText.slice(0, EMBEDDING_BYTE_LIMIT);
+    const decoder = new TextDecoder('utf-8');
+    const limitedText = decoder.decode(slicedText);
 
     const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${EMBEDDING_MODEL}:embedContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${EMBEDDING_MODEL}:embedContent?key=${GOOGLE_API_KEY}`,
         {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+            },
             body: JSON.stringify({
                 model: `models/${EMBEDDING_MODEL}`,
-                content: { parts: [{ text: limitedText }] }
+                content: {
+                    parts: [{
+                        text: limitedText
+                    }]
+                }
             })
         }
     );
 
     const data = await response.json();
-    if (!data.embedding?.values) throw new Error('Invalid embedding response');
+    console.log('Received embedding response:', data);
+
+    if (!data.embedding || !data.embedding.values) {
+        throw new Error('Invalid response from embedding API.');
+    }
     return data.embedding.values;
 }
 
@@ -113,13 +130,24 @@ const dbVersion = DB_VERSION;
 const storeName = STORE_NAME;
 
 async function initDB() {
+    console.log('Initializing IndexedDB');
     return new Promise((resolve, reject) => {
         const request = indexedDB.open(dbName, dbVersion);
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => resolve(request.result);
-        request.onupgradeneeded = (e) => {
-            if (!e.target.result.objectStoreNames.contains(storeName)) {
-                e.target.result.createObjectStore(storeName, { keyPath: 'id', autoIncrement: true });
+
+        request.onerror = () => {
+            console.error('Error opening IndexedDB:', request.error);
+            reject(request.error);
+        };
+        request.onsuccess = () => {
+            console.log('IndexedDB initialized successfully');
+            resolve(request.result);
+        };
+
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains(storeName)) {
+                db.createObjectStore(storeName, { keyPath: 'id', autoIncrement: true });
+                console.log(`Object store "${storeName}" created`);
             }
         };
     });
@@ -127,61 +155,96 @@ async function initDB() {
 
 // Save memory with its embedding
 async function saveMemory(text, embedding) {
+    console.log('Saving memory:', text);
     const db = await initDB();
+    const transaction = db.transaction([storeName], 'readwrite');
+    const store = transaction.objectStore(storeName);
+
     return new Promise((resolve, reject) => {
-        const request = db.transaction([storeName], 'readwrite')
-            .objectStore(storeName)
-            .add({ text, embedding, timestamp: Date.now() });
-            
-        request.onsuccess = resolve;
-        request.onerror = () => reject(request.error);
+        const request = store.add({
+            text,
+            embedding,
+            timestamp: Date.now()
+        });
+
+        request.onsuccess = () => {
+            console.log('Memory saved successfully');
+            resolve();
+        };
+        request.onerror = () => {
+            console.error('Error saving memory:', request.error);
+            reject(request.error);
+        };
     });
 }
 
 // Search memories without result limit
 async function searchMemories(searchEmbedding, queryText, threshold = MEMORY_SEARCH_THRESHOLD) {
+    console.log('Searching memories with threshold:', threshold);
     const db = await initDB();
-    const memories = await new Promise((resolve, reject) => {
-        const request = db.transaction([storeName], 'readonly')
-            .objectStore(storeName)
-            .getAll();
-            
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-    });
+    const transaction = db.transaction([storeName], 'readonly');
+    const store = transaction.objectStore(storeName);
 
-    console.log(`Retrieved ${memories.length} memories from IndexedDB`);
-    const currentTime = Date.now();
-    
-    return memories
-        .map(memory => {
-            // Calculate all scoring factors
-            const scores = {
-                similarity: cosineSimilarity(searchEmbedding, memory.embedding),
-                timeDecay: Math.exp(-TIME_DECAY_FACTOR * ((currentTime - memory.timestamp) / (1000 * 60 * 60 * 24))),
-                lengthFactor: 1 / (1 + LENGTH_NORMALIZATION_FACTOR * Math.log(memory.text.length)),
-                topicRelevance: getTopicRelevance(memory.text, queryText)
-            };
+    return new Promise((resolve, reject) => {
+        const request = store.getAll();
+
+        request.onsuccess = () => {
+            const memories = request.result;
+            console.log(`Retrieved ${memories.length} memories from IndexedDB`);
             
-            // Calculate final relevance score
-            const relevanceScore = Object.values(scores).reduce((a, b) => a * b);
-            
-            return { ...memory, ...scores, relevanceScore };
-        })
-        .filter(memory => memory.similarity >= TITLE_SIMILARITY_THRESHOLD)
-        .sort((a, b) => b.relevanceScore - a.relevanceScore);
+            const currentTime = Date.now();
+            const results = memories
+                .map(memory => {
+                    const similarityScore = cosineSimilarity(searchEmbedding, memory.embedding);
+                    const ageInDays = (currentTime - memory.timestamp) / (1000 * 60 * 60 * 24);
+                    const timeDecay = Math.exp(-TIME_DECAY_FACTOR * ageInDays);
+                    const lengthFactor = 1 / (1 + LENGTH_NORMALIZATION_FACTOR * Math.log(memory.text.length));
+                    const topicRelevance = getTopicRelevance(memory.text, queryText);
+                    
+                    // Adjusted relevance score with topic weighting
+                    const relevanceScore = similarityScore * timeDecay * lengthFactor * topicRelevance;
+
+                    return {
+                        ...memory,
+                        relevanceScore,
+                        similarityScore,
+                        timeDecay,
+                        lengthFactor,
+                        topicRelevance
+                    };
+                })
+                .filter(memory => memory.similarityScore >= TITLE_SIMILARITY_THRESHOLD)
+                .sort((a, b) => b.relevanceScore - a.relevanceScore);
+
+            console.log(`Found ${results.length} relevant memories after filtering`);
+            resolve(results);
+        };
+
+        request.onerror = () => {
+            console.error('Error fetching memories:', request.error);
+            reject(request.error);
+        };
+    });
 }
 
 // Get all memories
 async function getAllMemories() {
+    console.log('Fetching all memories from IndexedDB');
     const db = await initDB();
+    const transaction = db.transaction([storeName], 'readonly');
+    const store = transaction.objectStore(storeName);
+
     return new Promise((resolve, reject) => {
-        const request = db.transaction([storeName], 'readonly')
-            .objectStore(storeName)
-            .getAll();
-            
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
+        const request = store.getAll();
+        request.onsuccess = () => {
+            const memories = request.result;
+            console.log(`Fetched ${memories.length} memories from IndexedDB`);
+            resolve(memories);
+        };
+        request.onerror = () => {
+            console.error('Error retrieving all memories:', request.error);
+            reject(request.error);
+        };
     });
 }
 
@@ -200,13 +263,6 @@ function getRelevanceInfo(score) {
 
 // Updated function to extract info using Gemini LLM and save as memories
 async function extractInfoWithGemini(userMessage) {
-    const result = await chrome.storage.local.get('google_api_key');
-    const apiKey = result.google_api_key;
-    
-    if (!apiKey) {
-        throw new Error('Google API key not found');
-    }
-
     console.log('Extracting info from user message:', userMessage);
     
     // Extract previous memories section if it exists
@@ -230,13 +286,13 @@ async function extractInfoWithGemini(userMessage) {
             console.error('Error searching for relevant memories:', error);
         }
     }
-    console.log('previousRelevantMemories')
-    console.log(previousRelevantMemories)
+    // console.log('previousRelevantMemories')
+    // console.log(previousRelevantMemories)
     
     const limitedUserMessage = userMessage.slice(0, USER_MESSAGE_CHAR_LIMIT);
     
     const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GOOGLE_API_KEY}`,
         {
             method: 'POST',
             headers: {
@@ -333,83 +389,173 @@ Respond with a JSON array containing 0-2 concise strings that capture only truly
     }
 }
 
-// Simplify message handlers to avoid duplicate code
-const messageHandlers = {
-    async SEARCH_MEMORIES({ query }) {
-        const embedding = await getEmbedding(query);
-        return { results: await searchMemories(embedding, query) };
-    },
-    
-    async SAVE_MEMORY({ text }) {
-        const embedding = await getEmbedding(text);
-        await saveMemory(text, embedding);
-        return { status: 'success' };
-    },
-    
-    async GET_ALL_MEMORIES() {
-        return { memories: await getAllMemories() };
-    },
-    
-    async DELETE_MEMORY({ id }) {
-        await deleteMemory(id);
-        return { status: 'success' };
-    }
-};
-
-// Simplify message listener
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    const handler = messageHandlers[request.type];
-    if (handler) {
-        handler(request)
-            .then(response => sendResponse({ status: 'success', ...response }))
-            .catch(error => sendResponse({ status: 'error', message: error.message }));
-        return true;
-    }
-});
-
-// Simplify network request handling
+// Update the interceptNetworkRequests function
 function interceptNetworkRequests() {
-    const urlHandlers = {
-        'chatgpt.com/backend-api/conversation': payload => 
-            payload.messages?.[payload.messages.length - 1]?.content?.parts?.join('\n'),
-        'api.claude.ai/api/organizations': payload => payload.prompt
-    };
-
     chrome.webRequest.onBeforeRequest.addListener(
-        details => {
-            if (details.method === 'POST' && details.requestBody?.raw) {
-                try {
-                    const payload = JSON.parse(decodeURIComponent(
-                        String.fromCharCode.apply(null, new Uint8Array(details.requestBody.raw[0].bytes))
-                    ));
-
-                    for (const [urlPart, handler] of Object.entries(urlHandlers)) {
-                        if (details.url.includes(urlPart)) {
-                            const userMessage = handler(payload);
-                            if (userMessage) {
-                                extractInfoWithGemini(userMessage)
-                                    .then(info => console.log('Extracted info:', info))
-                                    .catch(err => console.error('Processing error:', err));
-                            }
-                            break;
-                        }
-                    }
-                } catch (error) {
-                    console.error('Payload parsing error:', error);
-                }
+        function(details) {
+            // Handle ChatGPT requests
+            if (details.url.includes('chatgpt.com/backend-api/conversation') && details.method === 'POST') {
+                handleChatGPTRequest(details);
             }
+            
+            // Handle Claude requests
+            if (details.url.includes('api.claude.ai/api/organizations') && 
+                details.url.includes('/completion') && 
+                details.method === 'POST') {
+                handleClaudeRequest(details);
+            }
+            
             return { cancel: false };
         },
-        { urls: [
-            "https://chatgpt.com/backend-api/conversation*",
-            "https://api.claude.ai/api/organizations/*/chat_conversations/*/completion*"
-        ]},
+        { 
+            urls: [
+                "https://chatgpt.com/backend-api/conversation*",
+                "https://api.claude.ai/api/organizations/*/chat_conversations/*/completion*"
+            ] 
+        },
         ["requestBody"]
     );
 }
 
+// Add new function to handle Claude requests
+function handleClaudeRequest(details) {
+    //console.log('Intercepted Claude API request:', details);
+    
+    if (details.requestBody && details.requestBody.raw) {
+        const rawData = details.requestBody.raw[0].bytes;
+        const decodedString = decodeURIComponent(String.fromCharCode.apply(null, new Uint8Array(rawData)));
+        try {
+            const payload = JSON.parse(decodedString);
+            //console.log('Parsed Claude request payload:', payload);
+            
+            // Extract the user's message
+            if (payload.prompt) {
+                const userMessage = payload.prompt;
+                console.log('Full user message from Claude:', userMessage);
+
+                // Extract info using Gemini and save as memories
+                extractInfoWithGemini(userMessage)
+                    .then(extractedInfoArray => {
+                        console.log('Extracted and saved info from Claude message:', extractedInfoArray);
+                    })
+                    .catch(error => console.error('Error processing Claude message:', error));
+            }
+        } catch (error) {
+            console.error('Error parsing Claude request payload:', error);
+        }
+    }
+}
+
+// Rename existing request handler to be ChatGPT specific
+function handleChatGPTRequest(details) {
+   // console.log('Intercepted ChatGPT API request:', details);
+    
+    if (details.requestBody && details.requestBody.raw) {
+        const rawData = details.requestBody.raw[0].bytes;
+        const decodedString = decodeURIComponent(String.fromCharCode.apply(null, new Uint8Array(rawData)));
+        try {
+            const payload = JSON.parse(decodedString);
+           // console.log('Parsed ChatGPT request payload:', payload);
+            
+            if (payload.messages && payload.messages.length > 0) {
+                const userMessage = payload.messages[payload.messages.length - 1].content.parts.join('\n');
+                console.log('Full user message from ChatGPT:', userMessage);
+
+                extractInfoWithGemini(userMessage)
+                    .then(extractedInfoArray => {
+                        console.log('Extracted and saved info from ChatGPT message:', extractedInfoArray);
+                    })
+                    .catch(error => console.error('Error processing ChatGPT message:', error));
+            }
+        } catch (error) {
+            console.error('Error parsing ChatGPT request payload:', error);
+        }
+    }
+}
+
+// Ensure content script is loaded before sending messages
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    if (changeInfo.status === 'complete' && 
+        (tab.url.includes('chatgpt.com') || tab.url.includes('claude.ai'))) {
+        chrome.tabs.sendMessage(tabId, { type: 'TAB_READY' }, function(response) {
+            if (chrome.runtime.lastError) {
+                console.log('Content script not ready:', chrome.runtime.lastError.message);
+            } else {
+                console.log('Content script is ready');
+            }
+        });
+    }
+});
+
 // Call this function to start intercepting
 interceptNetworkRequests();
+
+// Listen for messages from contentScript.js and popup.js
+// background.js - Updated message listener
+// Only the message listener part needs to change in background.js
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    console.log('Received message:', request);
+
+    if (request.type === 'SEARCH_MEMORIES') {
+        getEmbedding(request.query)
+            .then(embedding => searchMemories(embedding, request.query))
+            .then(results => {
+                sendResponse({ status: 'success', results });
+            })
+            .catch(error => {
+                console.error('Error searching memories:', error);
+                sendResponse({ status: 'error', message: 'Failed to search memories.' });
+            });
+        return true;
+    }
+
+    if (request.type === 'SAVE_MEMORY') {
+        getEmbedding(request.text)
+            .then(embedding => saveMemory(request.text, embedding))
+            .then(() => {
+                sendResponse({ status: 'success' });
+            })
+            .catch(error => {
+                console.error('Error saving memory:', error);
+                sendResponse({ status: 'error', message: 'Failed to save memory.' });
+            });
+        return true;
+    }
+
+    if (request.type === 'GET_ALL_MEMORIES') {
+        getAllMemories()
+            .then(memories => {
+                console.log('GET_ALL_MEMORIES fetched memories:', memories);
+                sendResponse({ status: 'success', memories });
+            })
+            .catch(error => {
+                console.error('Error retrieving memories:', error);
+                sendResponse({ status: 'error', message: 'Failed to retrieve memories.' });
+            });
+        return true;
+    }
+
+    if (request.type === 'LAST_ARTICLE_TEXT') {
+        console.log('Received last article text in background script:', request.text);
+        // You can process or store this text as needed
+    }
+
+    if (request.type === 'DELETE_MEMORY') {
+        deleteMemory(request.id)
+            .then(() => {
+                sendResponse({ status: 'success' });
+            })
+            .catch(error => {
+                console.error('Error deleting memory:', error);
+                sendResponse({ status: 'error', message: 'Failed to delete memory.' });
+            });
+        return true;
+    }
+
+    console.warn('Unhandled message type:', request.type);
+    sendResponse({ status: 'error', message: 'Unhandled message type.' });
+    return false;
+});
 
 // Add this new function to delete a memory
 async function deleteMemory(id) {
