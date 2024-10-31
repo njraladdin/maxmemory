@@ -159,33 +159,25 @@
     };
 
     const handleMessageStyling = (messageContainer) => {
-        const messageDiv = messageContainer.querySelector('.whitespace-pre-wrap') || 
-                          messageContainer.querySelector('[data-testid="user-message"]');
-        
+        const messageDiv = messageContainer.querySelector('.whitespace-pre-wrap, [data-testid="user-message"]');
         if (!messageDiv) return;
 
         const match = messageDiv.textContent.match(/\[RELEVANT_PAST_MEMORIES_START\]([\s\S]*?)\[RELEVANT_PAST_MEMORIES_END\]/);
         if (!match) return;
 
         const [fullMatch, memoriesContent] = match;
-        const [before, after] = messageDiv.textContent.split(/\[RELEVANT_PAST_MEMORIES_START\][\s\S]*?\[RELEVANT_PAST_MEMORIES_END\]/);
+        const [before, after] = messageDiv.textContent.split(fullMatch);
         
-        const MAX_CHARS = 280;
-        const truncatedContent = memoriesContent.length > MAX_CHARS ? 
-            `${memoriesContent.slice(0, MAX_CHARS)}... <span class="show-more-memories" style="color: #666; font-weight: 600; cursor: pointer; user-select: text; pointer-events: auto;">Show more</span>` : 
+        const truncatedContent = memoriesContent.length > 280 ? 
+            `${memoriesContent.slice(0, 280)}... <span class="show-more-memories" style="color: #666; font-weight: 600; cursor: pointer; user-select: text; pointer-events: auto;">Show more</span>` : 
             memoriesContent;
 
         messageDiv.innerHTML = `${before.trim()}<div class="memory-section">${createMemoriesIcon().outerHTML} <span class="memories-content">${truncatedContent}</span></div>${after.trim()}`;
 
-        // Add click handler for "Show more"
-        const showMoreBtn = messageDiv.querySelector('.show-more-memories');
-        if (showMoreBtn) {
-            showMoreBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const memoriesContentEl = e.target.closest('.memories-content');
-                memoriesContentEl.innerHTML = memoriesContent;
-            });
-        }
+        messageDiv.querySelector('.show-more-memories')?.addEventListener('click', e => {
+            e.stopPropagation();
+            e.target.closest('.memories-content').innerHTML = memoriesContent;
+        });
     };
 
     const syncMemoriesButtonState = () => {
@@ -193,20 +185,9 @@
         const checkbox = document.getElementById('auto-submit-memories');
         if (!getMemoriesButton || !checkbox) return;
 
-        // Handle ChatGPT
-        const chatGPTSubmitButton = document.querySelector('button[data-testid="send-button"]');
-        // Handle Claude
-        const claudeSubmitButton = document.querySelector('button[aria-label="Send Message"]');
-        const submitButton = chatGPTSubmitButton || claudeSubmitButton;
-
-        // Disable memories button if submit button doesn't exist or is disabled
-        if (!submitButton || submitButton.disabled) {
-            getMemoriesButton.disabled = true;
-        } else {
-            getMemoriesButton.disabled = submitButton.disabled;
-        }
+        const submitButton = document.querySelector('button[data-testid="send-button"], button[aria-label="Send Message"]');
+        getMemoriesButton.disabled = !submitButton || submitButton.disabled;
         
-        // Maintain hidden state if checkbox is checked
         if (checkbox.checked && submitButton) {
             submitButton.style.visibility = 'hidden';
             submitButton.style.opacity = '0';
@@ -348,7 +329,7 @@
         const button = document.createElement('button');
         button.id = 'get-memories-button';
         button.className = 'get-memories-button';
-        button.innerHTML = `${getMemoriesSVG('#40414f')}<span>Get Memories</span>`;
+        button.innerHTML = `${getMemoriesSVG('#40414f')}<span>Submit</span>`;
         // Initially hide the button
         button.style.display = 'none';
 
@@ -360,9 +341,17 @@
             button.style.transition = 'visibility 0.3s, opacity 0.3s, transform 0.3s';
             if (checkbox.checked) {
                 button.style.display = 'flex';
+                // Set initial position below
+                button.style.transform = 'translateY(20px)';
                 button.style.visibility = 'visible';
-                button.style.opacity = '1';
+                button.style.opacity = '0';
+                
+                // Force a reflow to ensure the initial state is rendered
+                button.offsetHeight;
+                
+                // Animate to final position
                 button.style.transform = 'translateY(0)';
+                button.style.opacity = '1';
             } else {
                 button.style.visibility = 'hidden';
                 button.style.opacity = '0';
@@ -417,9 +406,17 @@
             button.style.transition = 'visibility 0.3s, opacity 0.3s, transform 0.3s';
             if (checkbox.checked) {
                 button.style.display = 'flex';
+                // Set initial position below
+                button.style.transform = 'translateY(20px)';
                 button.style.visibility = 'visible';
-                button.style.opacity = '1';
+                button.style.opacity = '0';
+                
+                // Force a reflow to ensure the initial state is rendered
+                button.offsetHeight;
+                
+                // Animate to final position
                 button.style.transform = 'translateY(0)';
+                button.style.opacity = '1';
             } else {
                 button.style.visibility = 'hidden';
                 button.style.opacity = '0';
@@ -430,22 +427,18 @@
                 }, 300);
             }
             
-            // Handle submit button visibility with animation
+            // Simplified submit button visibility toggle without animation
             const chatGPTSubmitButton = document.querySelector('button[data-testid="send-button"]');
             const claudeSubmitButton = document.querySelector('button[aria-label="Send Message"]');
             const submitButton = chatGPTSubmitButton || claudeSubmitButton;
             
             if (submitButton) {
                 if (checkbox.checked) {
-                    submitButton.style.transition = 'visibility 0.3s, opacity 0.3s, transform 0.3s';
                     submitButton.style.visibility = 'hidden';
                     submitButton.style.opacity = '0';
-                    submitButton.style.transform = 'translateY(-20px)';
                 } else {
-                    submitButton.style.transition = 'visibility 0.3s, opacity 0.3s, transform 0.3s';
                     submitButton.style.visibility = 'visible';
                     submitButton.style.opacity = '1';
-                    submitButton.style.transform = 'translateY(0)';
                 }
             }
         });
@@ -502,83 +495,32 @@
     }
 
     const handleEnterKey = async (event) => {
-        if (event.key === 'Enter' && !event.shiftKey) {
-            const checkbox = document.getElementById('auto-submit-memories');
-            
-            // Only prevent default and handle memories if checkbox is checked
-            if (checkbox?.checked) {
-                // Get input box and its content
-                const inputBox = getInputBox();
-                
-                // Special handling for Claude's input
-                let inputContent = '';
-                if (inputBox) {
-                    if (inputBox.tagName === 'TEXTAREA') {
-                        inputContent = inputBox.value.trim();
-                    } else {
-                        // For Claude's contenteditable div
-                        const paragraphs = inputBox.querySelectorAll('p');
-                        // Check if there's only one paragraph and it has the placeholder class
-                        if (paragraphs.length === 1 && 
-                            (paragraphs[0].classList.contains('is-empty') || 
-                             paragraphs[0].classList.contains('is-editor-empty'))) {
-                            inputContent = '';
-                        } else {
-                            inputContent = inputBox.textContent.trim();
-                        }
-                    }
-                }
+        const checkbox = document.getElementById('auto-submit-memories');
+        if (!checkbox?.checked || event.key !== 'Enter' || event.shiftKey) return true;
 
-                // If input is empty, prevent all default behavior and return
-                if (!inputContent) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    event.stopImmediatePropagation();
-                    return false;
-                }
-
-                // Stop the event immediately
-                event.preventDefault();
-                event.stopPropagation();
-                event.stopImmediatePropagation();
-                
-                // Clear any _sentryCaptured flags they might have set
-                delete event._sentryCaptured;
-                
-                // Remove any special properties their code might check
-                Object.defineProperty(event, '_sentryCaptured', {
-                    get: () => false,
-                    set: () => {},
-                    configurable: true
-                });
-
-                console.log('Enter key pressed - preventing default submission');
-                
-                // Focus and get memories using the same inputBox reference
-                if (inputBox) {
-                    inputBox.focus();
-                    const memoriesButton = document.getElementById('get-memories-button');
-                    await getAndInsertMemories(memoriesButton);
-                    
-                    setTimeout(() => {
-                        const chatGPTSubmitButton = document.querySelector('button[data-testid="send-button"]');
-                        const claudeSubmitButton = document.querySelector('button[aria-label="Send Message"]');
-                        const submitButton = chatGPTSubmitButton || claudeSubmitButton;
-                        
-                        if (submitButton && !submitButton.disabled) {
-                            submitButton.click();
-                            // Reset loading state after submission
-                            memoriesButton.disabled = false;
-                            memoriesButton.classList.remove('loading');
-                        }
-                    }, 100);
-                }
-                
-                return false;
-            }
-            // If checkbox is not checked, let the default Enter behavior happen
-            return true;
+        const inputBox = getInputBox();
+        const inputContent = getInputContent(inputBox);
+        if (!inputContent || !inputBox) {
+            event.preventDefault();
+            return false;
         }
+
+        event.preventDefault();
+        event.stopPropagation();
+        
+        const memoriesButton = document.getElementById('get-memories-button');
+        await getAndInsertMemories(memoriesButton);
+        
+        setTimeout(() => {
+            const submitButton = document.querySelector('button[data-testid="send-button"], button[aria-label="Send Message"]');
+            if (submitButton && !submitButton.disabled) {
+                submitButton.click();
+                memoriesButton.disabled = false;
+                memoriesButton.classList.remove('loading');
+            }
+        }, 100);
+        
+        return false;
     };
 
     const setupEnterKeyPrevention = () => {
@@ -668,10 +610,8 @@
                     const submitButton = document.querySelector('button[data-testid="send-button"]') || 
                                        document.querySelector('button[aria-label="Send Message"]');
                     if (submitButton) {
-                        submitButton.style.transition = 'visibility 0.3s, opacity 0.3s, transform 0.3s';
                         submitButton.style.visibility = 'hidden';
                         submitButton.style.opacity = '0';
-                        submitButton.style.transform = 'translateY(-20px)';
                     }
                 }
             });
@@ -722,3 +662,27 @@
     init();
     document.addEventListener('DOMContentLoaded', init);
 })();
+
+const getInputContent = (inputBox) => {
+    return inputBox.tagName === 'TEXTAREA' ? 
+        inputBox.value.trim() : 
+        Array.from(inputBox.querySelectorAll('p'))
+            .map(p => p.textContent.trim())
+            .join('\n');
+};
+
+const setInputContent = (inputBox, content) => {
+    if (inputBox.tagName === 'TEXTAREA') {
+        inputBox.value = content;
+    } else {
+        inputBox.innerHTML = `<p>${content}</p>`;
+    }
+    // Focus and move cursor to end
+    inputBox.focus();
+    const range = document.createRange();
+    range.selectNodeContents(inputBox);
+    range.collapse(false);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+};
