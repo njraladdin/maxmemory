@@ -1,11 +1,13 @@
 {
     "manifest_version": 3,
     "name": "Memory Vault for ChatGPT & Claude",
-    "version": "1.4",
+    "version": "1",
     "description": "Save and view memories, integrating with ChatGPT and Claude.",
     "icons": {
-        "256": "icons/icon_256.png",
-        "512": "icons/icon_512.png"
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
     },
     "permissions": [
         "storage",
@@ -23,8 +25,10 @@
     "action": {
       "default_popup": "popup.html",
       "default_icon": {
-        "256": "icons/icon_256.png",
-        "512": "icons/icon_512.png"
+        "16": "icons/icon16.png",
+        "32": "icons/icon32.png",
+        "48": "icons/icon48.png",
+        "128": "icons/icon128.png"
       }
     },
     "content_scripts": [
