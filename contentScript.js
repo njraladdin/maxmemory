@@ -1,11 +1,6 @@
 // contentScript.js
 
 (function() {
-    const getMemoriesSVG = (color = '#40414f') => `
-      <svg fill="${color}" height="16px" width="16px" version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 612.001 612.001" xml:space="preserve" stroke="${color}">
-      <g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <g> <path d="M542.346,235.523c-6.647-76.801-52.108-147.626-115.793-190.052c-34.9-23.249-75.336-37.519-116.84-42.917 C195.319-12.325,74.841,37.92,31.685,150.284c-37.099,96.597-0.52,192.495,65.913,265.632 c23.974,26.393,27.298,76.017,27.298,109.446v67.792c0,10.408,8.438,18.846,18.846,18.846h245.301 c9.929,0,18.135-7.704,18.806-17.61c0.903-13.335,2.386-25.062,2.386-25.062c5.129-21.996,23.884-39.634,63.768-33.231 c41.844,6.713,68.237-5.756,70.584-33.617c0.774-9.191,1.273-87.695,1.273-87.695c1.999-1.142,15.117-3.75,34.236-8.097 c14.867-3.38,20.103-21.838,9.263-32.561c-43.469-43.001-49.299-63.047-50.378-67.362 C533.598,285.327,544.296,258.049,542.346,235.523z M461.327,209.858c-6.039,7.651-12.918,9.146-16.556,9.346 c-1.198,0.066-2.033,1.206-1.706,2.36c1.868,6.582,3.768,24.711-28.687,31.77c-30.438,6.615-48.844,30.29-60.863,42.313 c-9.233,9.225-21.723,13.495-34.183,16.299c-12.729,2.864-25.341,5.37-35.384,14.415c-10.577,9.527-25.495,61.985-28.027,71.104 c-0.222,0.801-0.951,1.352-1.783,1.352h-15.621c-0.877,0-1.636-0.614-1.817-1.473l-7.569-35.803 c-0.318-1.504-73.698,4.534-79.347-28.22c-0.198-1.149-1.359-1.862-2.456-1.466c-7.056,2.546-29.692,8.81-41.91-10.122 c-8.663-13.423-6.362-25.955-5.155-30.282c0.25-0.896-0.2-1.828-1.055-2.196c-6.225-2.677-28.719-15.289-25.669-56.784 c2.461-33.448,25.085-48.273,21.922-53.417c-9.124-14.837-1.193-39.431,17.5-44.921c0.753-0.221,1.288-0.888,1.359-1.67 l0.789-8.719c2.596-30.743,42.991-50.226,70.455-37.445c1.059,0.493,2.318-0.032,2.67-1.145 c3.438-10.898,10.377-13.898,12.226-14.938c8.515-4.791,19.572-4.199,28.374-0.586c0.712,0.292,1.523,0.114,2.048-0.448 c2.501-2.679,12.756-11.182,29.739-11.182c17.42,0,26.275,8.465,29.371,10.835c0.569,0.435,1.334,0.513,1.972,0.188 c3.919-2.004,18.228-8.411,32.554-3.476c10.818,3.732,16.959,13.578,18.893,17.161c0.413,0.766,1.281,1.157,2.128,0.957 c5.137-1.217,22.902-4.629,37.827,2.111c15.772,7.13,20.693,17.433,21.948,20.887c0.255,0.703,0.914,1.174,1.662,1.204 c3.42,0.136,12.858,0.964,18.691,5.866c10.3,8.66,9.294,15.488,8.108,18.41c-0.361,0.89,0.038,1.91,0.901,2.333 c4.704,2.307,17.892,9.927,26.073,26.112C472.011,182.884,467.505,202.031,461.327,209.858z"></path> </g> </g></svg>
-    `;
-
     const styles = `
         .memory-section {
             display: flex;
@@ -22,17 +17,6 @@
             pointer-events: none;
             opacity: 0.8;
         }
-        /* Claude-specific styles */
-        [data-test-render-count] .memory-section {
-            background-color: #F3F4F6;
-            color: #374151;
-            border-left-color: #9CA3AF;
-            margin: 8px 0;
-            border-radius: 8px;
-            font-size: 0.875em;
-            line-height: 1.5;
-        }
-     
         .memory-section svg {
             flex-shrink: 0;
             margin-right: 8px;
@@ -58,10 +42,11 @@
             background-color: #f7f7f8;
         }
         .get-memories-button:disabled {
-            background-color: #D7D7D7 !important;
-            color: #A0A0A0 !important;
+            background-color: rgba(255, 255, 255, 0.5) !important;
+            color: rgba(64, 65, 79, 0.5) !important;
             cursor: not-allowed;
-            opacity: 0.6;
+            border-color: rgba(217, 217, 227, 0.5);
+            transition: all 0.2s ease;
         }
         .memories-container {
             display: flex;
@@ -82,8 +67,65 @@
             border-left-color: #ddd;
         }
     
-
- 
+        .show-more-memories:hover {
+            text-decoration: underline;
+        }
+        .memories-content {
+            user-select: text;
+            pointer-events: auto;
+        }
+    
+        /* Switch styles */
+        .switch-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 36px;
+            height: 20px;
+        }
+        
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .3s;
+            border-radius: 34px;
+        }
+        
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .slider {
+            background-color: #10a37f;
+        }
+        
+        input:checked + .slider:before {
+            transform: translateX(16px);
+        }
     `;
     const styleEl = document.createElement('style');
     styleEl.textContent = styles;
@@ -102,9 +144,11 @@
         return `${year}-${month}-${day}`;
     };
 
-    const getInputBox = () => (
-        document.querySelector('#prompt-textarea, div[contenteditable="true"]')
-    );
+    const getInputBox = () => {
+        const inputBox = document.querySelector('#prompt-textarea, div[contenteditable="true"]');
+        console.log('Looking for input box:', inputBox);
+        return inputBox;
+    };
 
     const styleMemoriesInChat = () => {
         // Handle ChatGPT messages
@@ -126,25 +170,46 @@
         const [fullMatch, memoriesContent] = match;
         const [before, after] = messageDiv.textContent.split(/\[RELEVANT_PAST_MEMORIES_START\][\s\S]*?\[RELEVANT_PAST_MEMORIES_END\]/);
         
-        messageDiv.innerHTML = `${before.trim()}<div class="memory-section">${createMemoriesIcon().outerHTML} ${memoriesContent}</div>
-${after.trim()}`;
+        const MAX_CHARS = 280;
+        const truncatedContent = memoriesContent.length > MAX_CHARS ? 
+            `${memoriesContent.slice(0, MAX_CHARS)}... <span class="show-more-memories" style="color: #666; font-weight: 600; cursor: pointer; user-select: text; pointer-events: auto;">Show more</span>` : 
+            memoriesContent;
+
+        messageDiv.innerHTML = `${before.trim()}<div class="memory-section">${createMemoriesIcon().outerHTML} <span class="memories-content">${truncatedContent}</span></div>${after.trim()}`;
+
+        // Add click handler for "Show more"
+        const showMoreBtn = messageDiv.querySelector('.show-more-memories');
+        if (showMoreBtn) {
+            showMoreBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const memoriesContentEl = e.target.closest('.memories-content');
+                memoriesContentEl.innerHTML = memoriesContent;
+            });
+        }
     };
 
     const syncMemoriesButtonState = () => {
         const getMemoriesButton = document.getElementById('get-memories-button');
-        if (!getMemoriesButton) return;
+        const checkbox = document.getElementById('auto-submit-memories');
+        if (!getMemoriesButton || !checkbox) return;
 
         // Handle ChatGPT
         const chatGPTSubmitButton = document.querySelector('button[data-testid="send-button"]');
-        if (chatGPTSubmitButton) {
-            getMemoriesButton.disabled = chatGPTSubmitButton.disabled;
-            return;
-        }
-
         // Handle Claude
         const claudeSubmitButton = document.querySelector('button[aria-label="Send Message"]');
-        if (claudeSubmitButton) {
-            getMemoriesButton.disabled = claudeSubmitButton.disabled;
+        const submitButton = chatGPTSubmitButton || claudeSubmitButton;
+
+        // Disable memories button if submit button doesn't exist or is disabled
+        if (!submitButton || submitButton.disabled) {
+            getMemoriesButton.disabled = true;
+        } else {
+            getMemoriesButton.disabled = submitButton.disabled;
+        }
+        
+        // Maintain hidden state if checkbox is checked
+        if (checkbox.checked && submitButton) {
+            submitButton.style.visibility = 'hidden';
+            submitButton.style.opacity = '0';
         }
     };
 
@@ -158,18 +223,26 @@ ${after.trim()}`;
             syncMemoriesButtonState();
         }, { childList: true, subtree: true });
 
-        // Observer for button state
-        const submitButton = document.querySelector('button[data-testid="send-button"]');
-        if (submitButton) {
-            createObserver(syncMemoriesButtonState, { 
-                attributes: true, 
-                attributeFilter: ['disabled'] 
-            });
-        }
+        // Observer for button state changes
+        createObserver((mutations) => {
+            for (const mutation of mutations) {
+                if (mutation.target.matches('button[data-testid="send-button"], button[aria-label="Send Message"]')) {
+                    syncMemoriesButtonState();
+                }
+            }
+        }, { 
+            attributes: true, 
+            attributeFilter: ['disabled'],
+            subtree: true
+        });
     };
 
     const getAndInsertMemories = async (button) => {
         try {
+            // Start loading state
+            button.disabled = true;
+            button.classList.add('loading');
+
             const result = await chrome.storage.local.get('google_api_key');
             if (!result.google_api_key) {
                 alert('Please set your Google API key in the extension popup first.');
@@ -190,9 +263,6 @@ ${after.trim()}`;
                 const paragraphs = inputBox.querySelectorAll('p');
                 userInput = paragraphs[paragraphs.length - 1]?.textContent.trim() || '';
             }
-
-            button.disabled = true;
-            button.classList.add('loading');
 
             const response = await chrome.runtime.sendMessage({ 
                 type: 'SEARCH_MEMORIES', 
@@ -231,20 +301,182 @@ ${after.trim()}`;
         } catch (error) {
             console.error('Error fetching memories:', error);
             alert('Error fetching memories. Please try again.');
-        } finally {
             button.disabled = false;
             button.classList.remove('loading');
         }
     };
 
+    const createMemoriesButton = () => {
+        const container = document.createElement('div');
+        container.style.display = 'flex';
+        container.style.alignItems = 'center';
+        container.style.justifyContent = 'space-between';
+        container.style.width = '100%';
+
+        // Create left side container for checkbox and label
+        const leftContainer = document.createElement('div');
+        leftContainer.style.display = 'flex';
+        leftContainer.style.alignItems = 'center';
+        leftContainer.style.gap = '8px';
+
+        // Create switch container
+        leftContainer.className = 'switch-container';
+
+        // Create switch container
+        const switchLabel = document.createElement('label');
+        switchLabel.className = 'switch';
+
+        // Move the checkbox into the switch
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = 'auto-submit-memories';
+        checkbox.style.margin = '0';
+
+        // Create the slider element
+        const slider = document.createElement('span');
+        slider.className = 'slider';
+
+        // Update the label text
+        const label = document.createElement('label');
+        label.htmlFor = 'auto-submit-memories';
+        label.textContent = 'Allow infinite memory';
+        label.style.fontSize = '13px';
+        label.style.margin = '0';
+        label.style.cursor = 'pointer';
+
+        // Create button
+        const button = document.createElement('button');
+        button.id = 'get-memories-button';
+        button.className = 'get-memories-button';
+        button.innerHTML = `${getMemoriesSVG('#40414f')}<span>Get Memories</span>`;
+        // Initially hide the button
+        button.style.display = 'none';
+
+        // Load saved state when creating the checkbox
+        chrome.storage.local.get('autoSubmitEnabled', (result) => {
+            checkbox.checked = result.autoSubmitEnabled || false;
+            
+            // Update button visibility based on saved state with animation
+            button.style.transition = 'visibility 0.3s, opacity 0.3s, transform 0.3s';
+            if (checkbox.checked) {
+                button.style.display = 'flex';
+                button.style.visibility = 'visible';
+                button.style.opacity = '1';
+                button.style.transform = 'translateY(0)';
+            } else {
+                button.style.visibility = 'hidden';
+                button.style.opacity = '0';
+                button.style.transform = 'translateY(20px)';
+                button.style.display = 'none';
+            }
+            
+            // Update submit button visibility based on saved state
+            const chatGPTSubmitButton = document.querySelector('button[data-testid="send-button"]');
+            const claudeSubmitButton = document.querySelector('button[aria-label="Send Message"]');
+            const submitButton = chatGPTSubmitButton || claudeSubmitButton;
+            
+            if (submitButton && checkbox.checked) {
+                submitButton.style.visibility = 'hidden';
+                submitButton.style.opacity = '0';
+                submitButton.style.transform = 'translateY(-20px)';
+            }
+        });
+
+        button.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const shouldAutoSubmit = checkbox.checked;
+            await getAndInsertMemories(button);
+
+            if (shouldAutoSubmit) {
+                setTimeout(() => {
+                    const inputBox = getInputBox();
+                    if (inputBox) {
+                        inputBox.focus();
+                        const enterEvent = new KeyboardEvent('keydown', {
+                            key: 'Enter',
+                            code: 'Enter',
+                            keyCode: 13,
+                            which: 13,
+                            bubbles: true,
+                            cancelable: true
+                        });
+                        inputBox.dispatchEvent(enterEvent);
+                    }
+                }, 100);
+            }
+        });
+
+        // Add checkbox change listener to handle both memories button and submit button visibility
+        checkbox.addEventListener('change', () => {
+            // Save state when checkbox changes
+            chrome.storage.local.set({ autoSubmitEnabled: checkbox.checked });
+            
+            // Handle memories button visibility with animation
+            button.style.transition = 'visibility 0.3s, opacity 0.3s, transform 0.3s';
+            if (checkbox.checked) {
+                button.style.display = 'flex';
+                button.style.visibility = 'visible';
+                button.style.opacity = '1';
+                button.style.transform = 'translateY(0)';
+            } else {
+                button.style.visibility = 'hidden';
+                button.style.opacity = '0';
+                button.style.transform = 'translateY(20px)';
+                // Hide the button completely after animation
+                setTimeout(() => {
+                    button.style.display = 'none';
+                }, 300);
+            }
+            
+            // Handle submit button visibility with animation
+            const chatGPTSubmitButton = document.querySelector('button[data-testid="send-button"]');
+            const claudeSubmitButton = document.querySelector('button[aria-label="Send Message"]');
+            const submitButton = chatGPTSubmitButton || claudeSubmitButton;
+            
+            if (submitButton) {
+                if (checkbox.checked) {
+                    submitButton.style.transition = 'visibility 0.3s, opacity 0.3s, transform 0.3s';
+                    submitButton.style.visibility = 'hidden';
+                    submitButton.style.opacity = '0';
+                    submitButton.style.transform = 'translateY(-20px)';
+                } else {
+                    submitButton.style.transition = 'visibility 0.3s, opacity 0.3s, transform 0.3s';
+                    submitButton.style.visibility = 'visible';
+                    submitButton.style.opacity = '1';
+                    submitButton.style.transform = 'translateY(0)';
+                }
+            }
+        });
+
+        // Assemble the components
+        switchLabel.appendChild(checkbox);
+        switchLabel.appendChild(slider);
+        leftContainer.appendChild(switchLabel);
+        leftContainer.appendChild(label);
+        container.appendChild(leftContainer);
+        container.appendChild(button);
+
+        return container;
+    };
+
     const addGetMemoriesButton = () => {
+        // If button already exists, don't add it again
         if (document.getElementById('get-memories-button')) return;
 
-        const button = createMemoriesButton();
+        // Check if input box exists
+        const inputBox = getInputBox();
+        if (!inputBox) {
+            // If input box isn't ready, try again in a short while
+            setTimeout(addGetMemoriesButton, 500);
+            return;
+        }
+
         const container = document.createElement('div');
         container.style.display = 'flex';
         container.style.marginBottom = '12px';
-        container.appendChild(button);
+        container.appendChild(createMemoriesButton());
 
         const target = 
             document.querySelector('fieldset') ||
@@ -253,22 +485,10 @@ ${after.trim()}`;
         if (target) {
             target.parentNode.insertBefore(container, target);
             syncMemoriesButtonState();
+        } else {
+            // If target container isn't ready, try again
+            setTimeout(addGetMemoriesButton, 500);
         }
-    };
-
-    const createMemoriesButton = () => {
-        const button = document.createElement('button');
-        button.id = 'get-memories-button';
-        button.className = 'get-memories-button';
-        button.innerHTML = `${getMemoriesSVG('#40414f')}<span>Get Memories</span>`;
-
-        button.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            getAndInsertMemories(button);
-        });
-
-        return button;
     };
 
     // Add this function to get the last article's text content
@@ -281,47 +501,127 @@ ${after.trim()}`;
         return null;
     }
 
-    const observeInputBox = () => {
-        const inputBox = getInputBox();
-        if (!inputBox) {
-            console.log('Input box not found, retrying in 1 second...');
-            setTimeout(observeInputBox, 1000);
+    const handleEnterKey = async (event) => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            const checkbox = document.getElementById('auto-submit-memories');
+            
+            // Only prevent default and handle memories if checkbox is checked
+            if (checkbox?.checked) {
+                // Get input box and its content
+                const inputBox = getInputBox();
+                
+                // Special handling for Claude's input
+                let inputContent = '';
+                if (inputBox) {
+                    if (inputBox.tagName === 'TEXTAREA') {
+                        inputContent = inputBox.value.trim();
+                    } else {
+                        // For Claude's contenteditable div
+                        const paragraphs = inputBox.querySelectorAll('p');
+                        // Check if there's only one paragraph and it has the placeholder class
+                        if (paragraphs.length === 1 && 
+                            (paragraphs[0].classList.contains('is-empty') || 
+                             paragraphs[0].classList.contains('is-editor-empty'))) {
+                            inputContent = '';
+                        } else {
+                            inputContent = inputBox.textContent.trim();
+                        }
+                    }
+                }
+
+                // If input is empty, prevent all default behavior and return
+                if (!inputContent) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    event.stopImmediatePropagation();
+                    return false;
+                }
+
+                // Stop the event immediately
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+                
+                // Clear any _sentryCaptured flags they might have set
+                delete event._sentryCaptured;
+                
+                // Remove any special properties their code might check
+                Object.defineProperty(event, '_sentryCaptured', {
+                    get: () => false,
+                    set: () => {},
+                    configurable: true
+                });
+
+                console.log('Enter key pressed - preventing default submission');
+                
+                // Focus and get memories using the same inputBox reference
+                if (inputBox) {
+                    inputBox.focus();
+                    const memoriesButton = document.getElementById('get-memories-button');
+                    await getAndInsertMemories(memoriesButton);
+                    
+                    setTimeout(() => {
+                        const chatGPTSubmitButton = document.querySelector('button[data-testid="send-button"]');
+                        const claudeSubmitButton = document.querySelector('button[aria-label="Send Message"]');
+                        const submitButton = chatGPTSubmitButton || claudeSubmitButton;
+                        
+                        if (submitButton && !submitButton.disabled) {
+                            submitButton.click();
+                            // Reset loading state after submission
+                            memoriesButton.disabled = false;
+                            memoriesButton.classList.remove('loading');
+                        }
+                    }, 100);
+                }
+                
+                return false;
+            }
+            // If checkbox is not checked, let the default Enter behavior happen
+            return true;
+        }
+    };
+
+    const setupEnterKeyPrevention = () => {
+        // Target the specific elements
+        const proseMirrorEditor = document.querySelector('.ProseMirror');
+        const fieldset = document.querySelector('fieldset.flex');
+        const contentEditableDiv = document.querySelector('[contenteditable="true"]');
+
+        if (!proseMirrorEditor && !fieldset && !contentEditableDiv) {
+            console.log('Editor elements not found, retrying in 1 second...');
+            setTimeout(setupEnterKeyPrevention, 1000);
             return;
         }
 
-        // Create a style element for dynamic styles
-        let dynamicStyle = document.createElement('style');
-        dynamicStyle.id = 'memories-dynamic-style';
-        document.head.appendChild(dynamicStyle);
-
-        // Observer for input box changes
-        const observer = new MutationObserver(() => {
-            const hasMemories = inputBox.textContent.includes('[RELEVANT_PAST_MEMORIES_START]');
-            
-            // Update styles based on content
-            dynamicStyle.textContent = hasMemories ? `
-                [contenteditable="true"] p:first-of-type {
-                    position: relative;
-                    font-size: 0.75em;
-                    line-height: 1.4;
-                    color: #888;
-                    background-color: transparent;
-                    padding: 4px 8px 4px 24px;
-                    margin: 4px 0;
-                    border-left: 2px solid #ddd;
-                    user-select: none;
-                    pointer-events: none;
-                    opacity: 0.8;
-                }
-                // ... rest of styles ...
-            ` : '';
+        // Add listeners to all potential elements and window
+        [window, proseMirrorEditor, fieldset, contentEditableDiv].forEach(element => {
+            if (element) {
+                element.addEventListener('keydown', handleEnterKey, { capture: true });
+                element.addEventListener('keypress', handleEnterKey, { capture: true });
+            }
         });
 
-        observer.observe(inputBox, {
-            childList: true,
-            characterData: true,
-            subtree: true
-        });
+        // Override their event handler setup
+        const originalAddEventListener = EventTarget.prototype.addEventListener;
+        EventTarget.prototype.addEventListener = function(type, listener, options) {
+            if ((type === 'keypress' || type === 'keydown') && this.classList?.contains('ProseMirror')) {
+                const wrappedListener = function(event) {
+                    if (event.key === 'Enter' && !event.shiftKey) {
+                        return handleEnterKey(event);
+                    }
+                    return listener.apply(this, arguments);
+                };
+                return originalAddEventListener.call(this, type, wrappedListener, options);
+            }
+            return originalAddEventListener.apply(this, arguments);
+        };
+
+        // Prevent form submission if any
+        document.addEventListener('submit', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        }, true);
     };
 
     const formatClaudeInput = () => {
@@ -357,11 +657,46 @@ ${after.trim()}`;
         }
     };
 
+    // Add an observer specifically for the submit button
+    const observeSubmitButton = () => {
+        const callback = (mutations) => {
+            const checkbox = document.getElementById('auto-submit-memories');
+            if (!checkbox?.checked) return;
+
+            mutations.forEach(mutation => {
+                if (mutation.type === 'childList') {
+                    const submitButton = document.querySelector('button[data-testid="send-button"]') || 
+                                       document.querySelector('button[aria-label="Send Message"]');
+                    if (submitButton) {
+                        submitButton.style.transition = 'visibility 0.3s, opacity 0.3s, transform 0.3s';
+                        submitButton.style.visibility = 'hidden';
+                        submitButton.style.opacity = '0';
+                        submitButton.style.transform = 'translateY(-20px)';
+                    }
+                }
+            });
+        };
+
+        const observer = new MutationObserver(callback);
+        observer.observe(document.body, { 
+            childList: true, 
+            subtree: true 
+        });
+    };
+
     const init = () => {
+        // Wait for input box before initializing
+        const inputBox = getInputBox();
+        if (!inputBox) {
+            console.log('Input box not found, retrying initialization...');
+            setTimeout(init, 500);
+            return;
+        }
+
         addGetMemoriesButton();
         styleMemoriesInChat();
         observeDOM();
-        observeInputBox();
+        setupEnterKeyPrevention();
         formatClaudeInput();
 
         // Add message listener for initiated ChatGPT requests
@@ -372,15 +707,15 @@ ${after.trim()}`;
                 if (request.payload && request.payload.messages && request.payload.messages.length > 0) {
                     console.log('User message:', request.payload.messages[request.payload.messages.length - 1].content.parts.join('\n'));
                 }
-                // Send a response to acknowledge receipt of the message
                 sendResponse({received: true});
             } else if (request.type === 'TAB_READY') {
                 console.log('Tab is ready');
                 sendResponse({ready: true});
             }
-            // Return true to indicate that we will send a response asynchronously
             return true;
         });
+
+        observeSubmitButton();
     };
 
     // Ensure the content script is initialized as soon as possible

@@ -13,6 +13,7 @@ const EMBEDDING_MODEL = 'text-embedding-004';
 const TITLE_SIMILARITY_THRESHOLD = 0.1;  // Lowered from 0.3
 const TIME_DECAY_FACTOR = 0.05;  // Lowered from 0.1
 const LENGTH_NORMALIZATION_FACTOR = 0.3;  // Lowered from 0.5
+const MAX_MEMORIES_PER_MESSAGE = 30;  // Add this with other constants at the top
 
 // Add new constants for topic weighting
 const TOPIC_CATEGORIES = {
@@ -214,7 +215,8 @@ async function searchMemories(searchEmbedding, queryText, threshold = MEMORY_SEA
                     };
                 })
                 .filter(memory => memory.similarityScore >= TITLE_SIMILARITY_THRESHOLD)
-                .sort((a, b) => b.relevanceScore - a.relevanceScore);
+                .sort((a, b) => b.relevanceScore - a.relevanceScore)
+                .slice(0, MAX_MEMORIES_PER_MESSAGE);  // Limit the number of memories
 
             console.log(`Found ${results.length} relevant memories after filtering`);
             resolve(results);
@@ -576,4 +578,14 @@ async function deleteMemory(id) {
         };
     });
 }
+
+// Add this near the top with other initialization code
+chrome.runtime.onInstalled.addListener(() => {
+    // Initialize the autoSubmitEnabled state if it doesn't exist
+    chrome.storage.local.get('autoSubmitEnabled', (result) => {
+        if (result.autoSubmitEnabled === undefined) {
+            chrome.storage.local.set({ autoSubmitEnabled: false });
+        }
+    });
+});
 
