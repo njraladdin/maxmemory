@@ -1,8 +1,7 @@
 //background.js 
 
 // Configuration constants
-const GOOGLE_API_KEY = 'AIzaSyDAdu_kfOKPTJiwJZeSxYkT3KxEfSQlPb0';
-const MEMORY_SEARCH_THRESHOLD = 0.3;  // Lowered from 0.2
+const MEMORY_SEARCH_THRESHOLD = 0.4;  // Lowered from 0.2
 const USER_MESSAGE_CHAR_LIMIT = 4000;
 const EMBEDDING_BYTE_LIMIT = 1000;
 const DB_NAME = 'MemoryVaultDB';
@@ -84,6 +83,14 @@ function getTopicRelevance(text, queryText) {
 async function getEmbedding(text) {
     console.log('Fetching embedding for text:', text);
     
+    // Get the API key from storage
+    const result = await chrome.storage.local.get('google_api_key');
+    const apiKey = result.google_api_key;
+    
+    if (!apiKey) {
+        throw new Error('Google API key not found in storage');
+    }
+    
     const encoder = new TextEncoder();
     const encodedText = encoder.encode(text);
     const slicedText = encodedText.slice(0, EMBEDDING_BYTE_LIMIT);
@@ -91,7 +98,7 @@ async function getEmbedding(text) {
     const limitedText = decoder.decode(slicedText);
 
     const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${EMBEDDING_MODEL}:embedContent?key=${GOOGLE_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${EMBEDDING_MODEL}:embedContent?key=${apiKey}`,
         {
             method: 'POST',
             headers: {
@@ -111,8 +118,8 @@ async function getEmbedding(text) {
     const data = await response.json();
     console.log('Received embedding response:', data);
 
-    if (!data.embedding || !data.embedding.values) {
-        throw new Error('Invalid response from embedding API.');
+    if (data.error || !data.embedding || !data.embedding.values) {
+        throw new Error(data.error?.message || 'Invalid response from embedding API.');
     }
     return data.embedding.values;
 }
@@ -267,6 +274,14 @@ function getRelevanceInfo(score) {
 async function extractInfoWithGemini(userMessage) {
     console.log('Extracting info from user message:', userMessage);
     
+    // Get the API key from storage
+    const result = await chrome.storage.local.get('google_api_key');
+    const apiKey = result.google_api_key;
+    
+    if (!apiKey) {
+        throw new Error('Google API key not found in storage');
+    }
+    
     // Extract previous memories section if it exists
     let previousRelevantMemories = '';
     const memoriesMatch = userMessage.match(/<relevant_past_memories>([\s\S]*?)<\/relevant_past_memories>/);
@@ -294,7 +309,7 @@ async function extractInfoWithGemini(userMessage) {
     const limitedUserMessage = userMessage.slice(0, USER_MESSAGE_CHAR_LIMIT);
     
     const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GOOGLE_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
         {
             method: 'POST',
             headers: {
