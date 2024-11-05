@@ -321,46 +321,51 @@ async function extractInfoWithGemini(userMessage) {
                         role: "user",
                         parts: [
                             {
-                                text: `Context: You are analyzing a user's message to extract ONLY the most significant and permanent information about the user. Be EXTREMELY selective - only save information that would be valuable months or years from now for understanding the user's core identity and major life circumstances.
+                                text: `Context: You are analyzing a user's message to extract ONLY the most significant and permanent information about the user. Be selective - save information that would be valuable months or years from now for understanding the user's identity, beliefs, and major life circumstances.
 
 Previous memories about this user:
 ${previousRelevantMemories}
 
-From the following user message, extract ONLY major, permanent information that is NOT already captured in previous memories: "${limitedUserMessage}"
+From the following user message, extract ONLY significant information that is NOT already captured in previous memories: "${limitedUserMessage}"
 
 STRICT Guidelines:
-1. Be HIGHLY selective - default to saving nothing unless truly significant
-2. ONLY save information that is:
+1. Be selective - only save truly meaningful information
+2. Save information that is:
    - Permanent or long-term in nature
    - Core to understanding the user's identity
    - Major life circumstances or changes
    - Significant medical conditions or restrictions
    - Key professional or educational status
    - Important relationships or roles
-   - Strong, enduring preferences or beliefs
+   - Strong opinions or beliefs that reflect core values
+   - Deeply held preferences that define the person
+   - Recurring themes or patterns in thinking
+   - Fundamental principles they express
+   - Strong emotional connections to topics/ideas
+   - Expertise or areas of deep knowledge
 
 DO NOT save information that is:
 - Temporary states or feelings
 - Daily activities or routine events
-- Minor preferences or opinions
-- Casual observations
+- Casual or fleeting preferences
+- Common experiences
 - General knowledge or facts
 - Similar to existing memories
-- Common experiences
+- Surface-level opinions without strong conviction
 
-Example input: "I'm a software engineer who loves coffee and had a headache yesterday"
-✅ Good output: ["User works as a software engineer"]
-❌ Bad output: ["User loves coffee", "User had a headache"]
+Example input: "I absolutely hate the idea of working in big tech companies. I believe they're destroying privacy and human connection. I'd rather work at a small company where I can make real impact."
+✅ Good output: ["User holds strong anti-big-tech values and prioritizes privacy and human connection in their work choices"]
+❌ Bad output: ["User prefers small companies"]
 
-Example input: "Moving to Seattle next month for my new job at Microsoft as a senior developer"
-✅ Good output: ["User is a senior developer at Microsoft based in Seattle"]
-❌ Bad output: ["User is moving next month", "User got a new job"]
+Example input: "I'm passionate about sustainable living. I've been vegan for 10 years and actively campaign for environmental causes. Just bought some groceries today."
+✅ Good output: ["User is deeply committed to environmentalism and has maintained a vegan lifestyle for 10 years"]
+❌ Bad output: ["User bought groceries", "User is vegan"]
 
-Example input: "I enjoy reading and might go to the park later"
+Example input: "Thinking about what to have for lunch. Maybe pizza."
 ✅ Good output: [] // Nothing significant enough to save
-❌ Bad output: ["User enjoys reading", "User plans to visit park"]
+❌ Bad output: ["User likes pizza"]
 
-Respond with a JSON array containing 0-1 concise memories (rarely 2 for truly major life events). Default to an empty array unless the information is genuinely significant and permanent.`
+Respond with a JSON array containing 0-2 concise memories. Default to an empty array unless the information reveals something truly significant about the user's identity, values, or life circumstances.`
                             }
                         ]
                     }
