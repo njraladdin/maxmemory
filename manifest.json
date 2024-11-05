@@ -1,6 +1,6 @@
 {
     "manifest_version": 3,
-    "name": "Memory Vault for ChatGPT & Claude",
+    "name": "Memory Vault - Infinite Long-term memory for ChatGPT and Claude",
     "version": "1",
     "description": "Add Infinite Long-term memory for ChatGPT and Claude chatbots.",
     "icons": {

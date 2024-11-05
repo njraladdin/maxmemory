@@ -321,49 +321,46 @@ async function extractInfoWithGemini(userMessage) {
                         role: "user",
                         parts: [
                             {
-                                text: `Context: You are analyzing a user's message to extract only the significant and long-term relevant information about the user. Focus on creating permanent memories that would be valuable for understanding the user's core characteristics, important life details, and significant preferences.
+                                text: `Context: You are analyzing a user's message to extract ONLY the most significant and permanent information about the user. Be EXTREMELY selective - only save information that would be valuable months or years from now for understanding the user's core identity and major life circumstances.
 
 Previous memories about this user:
 ${previousRelevantMemories}
 
-From the following user message, extract only truly significant information worth remembering long-term that is NOT already captured in the previous memories: "${limitedUserMessage}"
+From the following user message, extract ONLY major, permanent information that is NOT already captured in previous memories: "${limitedUserMessage}"
 
-Key Instructions:
-- Extract information that provides lasting insight into the user
-- Information should be valuable even months or years from now
-- Combine related information into comprehensive single memories
-- If the user explicitly asks to remember something, include it
-- Consider if recurring patterns reveal important user characteristics
-- DO NOT create memories that duplicate information already present in previous memories or are similar
-- If new information adds detail to an existing memory, only include the new aspects
-- When in doubt about similarity with existing memories, skip it to avoid redundancy
+STRICT Guidelines:
+1. Be HIGHLY selective - default to saving nothing unless truly significant
+2. ONLY save information that is:
+   - Permanent or long-term in nature
+   - Core to understanding the user's identity
+   - Major life circumstances or changes
+   - Significant medical conditions or restrictions
+   - Key professional or educational status
+   - Important relationships or roles
+   - Strong, enduring preferences or beliefs
 
-Focus ONLY on:
-1. Personal details and characteristics
-2. Life events and circumstances
-3. Strong preferences and beliefs
-4. Important conditions or traits
-5. Goals and plans
-6. Values and principles
-7. Key relationships and roles
+DO NOT save information that is:
+- Temporary states or feelings
+- Daily activities or routine events
+- Minor preferences or opinions
+- Casual observations
+- General knowledge or facts
+- Similar to existing memories
+- Common experiences
 
-Example input: "I'm feeling tired today since I didn't sleep well"
-✅ Good output:
-["User experiences sleep difficulties"]
+Example input: "I'm a software engineer who loves coffee and had a headache yesterday"
+✅ Good output: ["User works as a software engineer"]
+❌ Bad output: ["User loves coffee", "User had a headache"]
 
-Example input: "I work as a software engineer in Seattle and I'm severely allergic to shellfish"
-✅ Good output:
-["User is a software engineer based in Seattle and has a severe shellfish allergy"]
+Example input: "Moving to Seattle next month for my new job at Microsoft as a senior developer"
+✅ Good output: ["User is a senior developer at Microsoft based in Seattle"]
+❌ Bad output: ["User is moving next month", "User got a new job"]
 
-Example input: "The weather is nice and I might go for a walk"
-✅ Good output:
-[] // No memories - casual, temporary information
+Example input: "I enjoy reading and might go to the park later"
+✅ Good output: [] // Nothing significant enough to save
+❌ Bad output: ["User enjoys reading", "User plans to visit park"]
 
-Example input: "I'm planning to move to Canada next month for my new job as a teacher"
-✅ Good output:
-["User is relocating to Canada to work as a teacher"]
-
-Respond with a JSON array containing 0-2 concise strings that capture only truly significant, long-term relevant information. Default to an empty array unless the information is genuinely important.`
+Respond with a JSON array containing 0-1 concise memories (rarely 2 for truly major life events). Default to an empty array unless the information is genuinely significant and permanent.`
                             }
                         ]
                     }

@@ -126,6 +126,9 @@
         input:checked + .slider:before {
             transform: translateX(16px);
         }
+        textarea:not([placeholder]) {
+            min-height: 100vh;
+        }
     `;
     const styleEl = document.createElement('style');
     styleEl.textContent = styles;
