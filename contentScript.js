@@ -223,7 +223,6 @@
 
     const getAndInsertMemories = async (button) => {
         try {
-            // Start loading state
             button.disabled = true;
             button.classList.add('loading');
 
@@ -239,18 +238,21 @@
                 return;
             }
 
-            // Get the current user input
+            // Get the current user input while preserving line breaks
             let userInput = '';
             if (inputBox.tagName === 'TEXTAREA') {
-                userInput = inputBox.value.trim();
+                userInput = inputBox.value;  // Remove trim() to preserve line breaks
             } else {
+                // For contenteditable, preserve line breaks between paragraphs
                 const paragraphs = inputBox.querySelectorAll('p');
-                userInput = paragraphs[paragraphs.length - 1]?.textContent.trim() || '';
+                userInput = Array.from(paragraphs)
+                    .map(p => p.textContent)  // Remove trim() to preserve spacing
+                    .join('\n');
             }
 
             const response = await chrome.runtime.sendMessage({ 
                 type: 'SEARCH_MEMORIES', 
-                query: userInput
+                query: userInput.trim()  // Only trim for the search query
             });
             
             if (response?.status === 'success' && response.results.length) {
@@ -266,11 +268,14 @@
                     inputBox.innerHTML = '';
                 }
 
-                // Use the new tag format
+                // Insert memories while preserving original line breaks
                 if (inputBox.tagName === 'TEXTAREA') {
                     inputBox.value = `[RELEVANT_PAST_MEMORIES_START] ${memoriesText} [RELEVANT_PAST_MEMORIES_END]\n\n${userInput}`;
                 } else {
-                    inputBox.innerHTML = `<p>[RELEVANT_PAST_MEMORIES_START] ${memoriesText} [RELEVANT_PAST_MEMORIES_END]</p><br/><p>${userInput}</p>`;
+                    // For contenteditable, split by newlines and create paragraphs
+                    const lines = userInput.split('\n');
+                    const paragraphs = lines.map(line => `<p>${line}</p>`).join('');
+                    inputBox.innerHTML = `<p>[RELEVANT_PAST_MEMORIES_START] ${memoriesText} [RELEVANT_PAST_MEMORIES_END]</p><br/>${paragraphs}`;
                 }
                 
                 // Focus the input and move cursor to end
