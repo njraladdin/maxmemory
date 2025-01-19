@@ -284,10 +284,10 @@ async function extractInfoWithGemini(userMessage) {
     
     // Extract previous memories section if it exists
     let previousRelevantMemories = '';
-    const memoriesMatch = userMessage.match(/<relevant_past_memories>([\s\S]*?)<\/relevant_past_memories>/);
+    const memoriesMatch = userMessage.match(/\[RELEVANT_PAST_MEMORIES_START\]([\s\S]*?)\[RELEVANT_PAST_MEMORIES_END\]/);
     if (memoriesMatch) {
         previousRelevantMemories = memoriesMatch[1];
-        userMessage = userMessage.replace(/<relevant_past_memories>[\s\S]*?<\/relevant_past_memories>/, '').trim();
+        userMessage = userMessage.replace(/\[RELEVANT_PAST_MEMORIES_START\][\s\S]*?\[RELEVANT_PAST_MEMORIES_END\]/, '').trim();
     } else {
         // Search for relevant memories if none were provided
         try {
@@ -297,17 +297,15 @@ async function extractInfoWithGemini(userMessage) {
                 previousRelevantMemories = relevantMemories
                     .map(memory => memory.text)
                     .join('\n');
-                userMessage = `<relevant_past_memories>${previousRelevantMemories}</relevant_past_memories>\n${userMessage}`;
+                userMessage = `[RELEVANT_PAST_MEMORIES_START]${previousRelevantMemories}[RELEVANT_PAST_MEMORIES_END]\n${userMessage}`;
             }
         } catch (error) {
             console.error('Error searching for relevant memories:', error);
         }
     }
-    // console.log('previousRelevantMemories')
-    // console.log(previousRelevantMemories)
     
     const limitedUserMessage = userMessage.slice(0, USER_MESSAGE_CHAR_LIMIT);
-    
+    console.log({limitedUserMessage})
     const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
         {
@@ -365,13 +363,15 @@ Example input: "Thinking about what to have for lunch. Maybe pizza."
 ✅ Good output: [] // Nothing significant enough to save
 ❌ Bad output: ["User likes pizza"]
 
+generally, just keep stuff that'll be good / useful to remember in future chats.
+
 Respond with a JSON array containing 0-2 concise memories. Default to an empty array unless the information reveals something truly significant about the user's identity, values, or life circumstances.`
                             }
                         ]
                     }
                 ],
                 generationConfig: {
-                    temperature: 0.1,
+                    temperature: 0.2,
                     topK: 20,
                     topP: 0.8,
                     maxOutputTokens: 8192,
