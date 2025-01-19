@@ -365,7 +365,7 @@ Example input: "Thinking about what to have for lunch. Maybe pizza."
 
 generally, just keep stuff that'll be good / useful to remember in future chats.
 
-Respond with a JSON array containing 0-2 concise memories. Default to an empty array unless the information reveals something truly significant about the user's identity, values, or life circumstances.`
+Respond with a JSON array containing 0-2 concise memories or more depending on how much information is relevant. Default to an empty array unless the information reveals something truly significant about the user's identity, values, or life circumstances.`
                             }
                         ]
                     }
