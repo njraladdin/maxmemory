@@ -183,17 +183,23 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initial load
     loadMemories();
+
+    // Add API key related listeners
+    document.getElementById('save-api-key').addEventListener('click', saveApiKey);
+    checkApiKey();
 });
 
-// Add these functions at the beginning of popup.js
+// Update the saveApiKey function
 async function saveApiKey() {
     const apiKeyInput = document.getElementById('api-key-input');
     const apiKey = apiKeyInput.value.trim();
     const statusElement = document.getElementById('api-key-status');
+    const saveButton = document.getElementById('save-api-key');
     
-    // Reset status
+    // Reset states
     statusElement.textContent = '';
-    statusElement.style.color = '#10A37F';
+    saveButton.classList.remove('verified');
+    saveButton.textContent = 'Save API Key';
     showApiKeyWarning(false);
 
     if (!apiKey) {
@@ -201,35 +207,23 @@ async function saveApiKey() {
         return;
     }
 
-    // First check the format
     if (!isValidApiKeyFormat(apiKey)) {
         statusElement.textContent = 'Invalid API key format';
         statusElement.style.color = '#dc2626';
         return;
     }
 
-    // Show loading state
-    const saveButton = document.getElementById('save-api-key');
-    const originalButtonText = saveButton.textContent;
     saveButton.disabled = true;
     saveButton.textContent = 'Verifying...';
-    statusElement.textContent = 'Verifying API key...';
 
     try {
-        // Test the API key
         const isValid = await testApiKeyWithEmbedding(apiKey);
         
         if (isValid) {
-            // Save the valid API key
             await chrome.storage.local.set({ 'google_api_key': apiKey });
-            statusElement.textContent = 'API Key verified and saved!';
-            statusElement.style.color = '#10A37F';
+            saveButton.classList.add('verified');
+            saveButton.textContent = 'Verified';
             showApiKeyWarning(false);
-            
-            // Clear status after 3 seconds
-            setTimeout(() => {
-                statusElement.textContent = '';
-            }, 3000);
         } else {
             throw new Error('Invalid API key');
         }
@@ -238,23 +232,30 @@ async function saveApiKey() {
         statusElement.textContent = 'Invalid API key. Please check and try again.';
         statusElement.style.color = '#dc2626';
         showApiKeyWarning(true);
+        saveButton.textContent = 'Save API Key';
+        // Remove invalid API key from storage
+        await chrome.storage.local.remove('google_api_key');
     } finally {
-        // Reset button state
         saveButton.disabled = false;
-        saveButton.textContent = originalButtonText;
     }
 }
 
+// Simplify the checkApiKey function
 async function checkApiKey() {
     try {
         const result = await chrome.storage.local.get('google_api_key');
         const apiKey = result.google_api_key;
+        const saveButton = document.getElementById('save-api-key');
         
         if (apiKey) {
             document.getElementById('api-key-input').value = apiKey;
             showApiKeyWarning(false);
+            saveButton.classList.add('verified');
+            saveButton.textContent = 'Verified';
         } else {
             showApiKeyWarning(true);
+            saveButton.classList.remove('verified');
+            saveButton.textContent = 'Save API Key';
         }
     } catch (error) {
         console.error('Error checking API key:', error);
@@ -264,47 +265,9 @@ async function checkApiKey() {
 
 function showApiKeyWarning(show) {
     const warning = document.getElementById('api-key-warning');
-    const helpText = document.querySelector('.api-key-help');
-    
-    if (show) {
-        // Show full instructions when API key is needed
-        helpText.innerHTML = `
-            <div style="margin-bottom: 16px;">
-                <p style="font-size: 14px; color: #374151; margin-bottom: 8px;">
-                    Memory Vault uses Google's Gemini API for creating and managing memories.
-                </p>
-                <p style="font-size: 14px; color: #374151; margin-bottom: 8px;">
-                    To get started:
-                </p>
-                <ol style="font-size: 14px; color: #374151; margin-left: 20px; margin-bottom: 12px;">
-                    <li>Visit <a href="https://aistudio.google.com/app/prompts/new_chat" target="_blank" style="color: #4F46E5; text-decoration: underline;">Google AI Studio</a></li>
-                    <li>Sign in with your Google account</li>
-                    <li>Get your free API key</li>
-                    <li>Paste it here</li>
-                </ol>
-            </div>
-        `;
-    } else {
-        // Show minimal text when API key is already set
-        helpText.innerHTML = `
-            <p style="font-size: 14px; color: #374151; margin-bottom: 8px;">
-                Memory Vault uses Google's Gemini API for creating and managing memories.
-            </p>
-        `;
-    }
-    
     warning.style.display = show ? 'block' : 'none';
     warning.innerHTML = 'Please enter your API key to continue.';
 }
-
-// Add this to your DOMContentLoaded event listener
-document.addEventListener('DOMContentLoaded', function() {
-    // ... existing code ...
-
-    // Add API key related listeners
-    document.getElementById('save-api-key').addEventListener('click', saveApiKey);
-    checkApiKey();
-});
 
 // Add these validation functions
 function isValidApiKeyFormat(apiKey) {
@@ -340,15 +303,13 @@ async function testApiKeyWithEmbedding(apiKey) {
     }
 }
 
-// Update the API key section HTML in popup.html
+// Keep the DOMContentLoaded event listener that adds the help text
 document.addEventListener('DOMContentLoaded', function() {
-    // ... existing code ...
-
-    // Update API key section with always-visible explanation
     const apiKeySection = document.querySelector('.api-key-section');
     if (apiKeySection) {
         const helpText = document.createElement('div');
         helpText.className = 'api-key-help';
+        // Always show the full instructions
         helpText.innerHTML = `
             <div style="margin-bottom: 16px;">
                 <p style="font-size: 14px; color: #374151; margin-bottom: 8px;">
@@ -359,8 +320,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 </p>
                 <ol style="font-size: 14px; color: #374151; margin-left: 20px; margin-bottom: 12px;">
                     <li>Visit <a href="https://aistudio.google.com/app/prompts/new_chat" target="_blank" style="color: #4F46E5; text-decoration: underline;">Google AI Studio</a></li>
-                    <li>Sign in with your Google account</li>
-                    <li>Get your free API key</li>
+                    <li>Click on "Get API key"</li>
+                    <li>Create API key</li>
                     <li>Paste it here</li>
                 </ol>
             </div>
@@ -370,8 +331,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const apiKeyContainer = apiKeySection.querySelector('.api-key-container');
         apiKeySection.insertBefore(helpText, apiKeyContainer);
     }
-
-    // ... rest of your DOMContentLoaded code ...
 });
 
 // Add this CSS to your stylesheet

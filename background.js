@@ -571,6 +571,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return true;
     }
 
+    if (request.type === 'OPEN_POPUP') {
+        chrome.tabs.create({
+            url: chrome.runtime.getURL('popup.html')
+        });
+    }
+
     console.warn('Unhandled message type:', request.type);
     sendResponse({ status: 'error', message: 'Unhandled message type.' });
     return false;

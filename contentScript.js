@@ -302,7 +302,7 @@
         container.style.justifyContent = 'space-between';
         container.style.width = '100%';
 
-        // Create left side container for checkbox and label
+        // Create left side container for checkbox, label and settings button
         const leftContainer = document.createElement('div');
         leftContainer.style.display = 'flex';
         leftContainer.style.alignItems = 'center';
@@ -332,6 +332,89 @@
         label.style.fontSize = '13px';
         label.style.margin = '0';
         label.style.cursor = 'pointer';
+
+        // Create settings button with notification dot container
+        const settingsButtonContainer = document.createElement('div');
+        settingsButtonContainer.style.position = 'relative';
+        
+        const settingsButton = document.createElement('button');
+        settingsButton.innerHTML = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M13.3 8c0-.3 0-.6-.1-.8l1.5-1.3-1.4-2.4-1.9.5c-.4-.4-.9-.6-1.4-.8L9.7 1h-2.8l-.3 2.2c-.5.2-1 .5-1.4.8l-1.9-.5-1.4 2.4 1.5 1.3c0 .2-.1.5-.1.8s0 .6.1.8L1.9 10l1.4 2.4 1.9-.5c.4.4.9.6 1.4.8l.3 2.3h2.8l.3-2.2c.5-.2 1-.5 1.4-.8l1.9.5 1.4-2.4-1.5-1.3c0-.3.1-.6.1-.8z" fill="#666"/>
+        </svg>`;
+        settingsButton.style.cssText = `
+            background: none;
+            border: none;
+            padding: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: background-color 0.2s ease;
+        `;
+
+        // Create notification dot
+        const notificationDot = document.createElement('div');
+        notificationDot.style.cssText = `
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 6px;
+            height: 6px;
+            background-color: #dc2626;
+            border-radius: 50%;
+            display: none;
+        `;
+
+        // Create tooltip
+        const tooltip = document.createElement('div');
+        tooltip.textContent = 'API key required';
+        tooltip.style.cssText = `
+            position: absolute;
+            top: -30px;
+            right: 0;
+            background-color: #dc2626;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            display: none;
+            pointer-events: none;
+            z-index: 1000;
+        `;
+
+        // Check API key and show/hide notification dot
+        chrome.storage.local.get('google_api_key', (result) => {
+            if (!result.google_api_key) {
+                notificationDot.style.display = 'block';
+            }
+        });
+
+        // Add hover events for tooltip
+        settingsButton.addEventListener('mouseover', () => {
+            settingsButton.style.backgroundColor = '#f0f0f0';
+            // Only show tooltip if there's no API key
+            chrome.storage.local.get('google_api_key', (result) => {
+                if (!result.google_api_key) {
+                    tooltip.style.display = 'block';
+                }
+            });
+        });
+
+        settingsButton.addEventListener('mouseout', () => {
+            settingsButton.style.backgroundColor = 'transparent';
+            tooltip.style.display = 'none';
+        });
+
+        settingsButton.addEventListener('click', () => {
+            chrome.runtime.sendMessage({ type: 'OPEN_POPUP' });
+        });
+
+        // Assemble the settings button container
+        settingsButtonContainer.appendChild(settingsButton);
+        settingsButtonContainer.appendChild(notificationDot);
+        settingsButtonContainer.appendChild(tooltip);
 
         // Create button
         const button = document.createElement('button');
@@ -456,6 +539,7 @@
         switchLabel.appendChild(slider);
         leftContainer.appendChild(switchLabel);
         leftContainer.appendChild(label);
+        leftContainer.appendChild(settingsButtonContainer);  // Use container instead of button
         container.appendChild(leftContainer);
         container.appendChild(button);
 
@@ -492,15 +576,6 @@
         }
     };
 
-    // Add this function to get the last article's text content
-    function getLastArticleText() {
-        const articles = document.querySelectorAll('article');
-        if (articles.length > 0) {
-            const lastArticle = articles[articles.length - 1];
-            return lastArticle.textContent.trim();
-        }
-        return null;
-    }
 
     const handleEnterKey = async (event) => {
         const checkbox = document.getElementById('auto-submit-memories');
