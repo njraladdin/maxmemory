@@ -436,60 +436,67 @@ function interceptNetworkRequests() {
     );
 }
 
-// Add new function to handle Claude requests
-function handleClaudeRequest(details) {
-    //console.log('Intercepted Claude API request:', details);
-    
-    if (details.requestBody && details.requestBody.raw) {
-        const rawData = details.requestBody.raw[0].bytes;
-        const decodedString = decodeURIComponent(String.fromCharCode.apply(null, new Uint8Array(rawData)));
-        try {
-            const payload = JSON.parse(decodedString);
-            //console.log('Parsed Claude request payload:', payload);
-            
-            // Extract the user's message
-            if (payload.prompt) {
-                const userMessage = payload.prompt;
-                console.log('Full user message from Claude:', userMessage);
-
-                // Extract info using Gemini and save as memories
-                extractInfoWithGemini(userMessage)
-                    .then(extractedInfoArray => {
-                        console.log('Extracted and saved info from Claude message:', extractedInfoArray);
-                    })
-                    .catch(error => console.error('Error processing Claude message:', error));
-            }
-        } catch (error) {
-            console.error('Error parsing Claude request payload:', error);
+// Update the handleChatGPTRequest function
+function handleChatGPTRequest(details) {
+    // First check if infinite memory is enabled
+    chrome.storage.local.get('autoSubmitEnabled', (result) => {
+        if (!result.autoSubmitEnabled) {
+            console.log('Infinite memory disabled - skipping memory storage');
+            return;
         }
-    }
+        
+        if (details.requestBody && details.requestBody.raw) {
+            const rawData = details.requestBody.raw[0].bytes;
+            const decodedString = decodeURIComponent(String.fromCharCode.apply(null, new Uint8Array(rawData)));
+            try {
+                const payload = JSON.parse(decodedString);
+                
+                if (payload.messages && payload.messages.length > 0) {
+                    const userMessage = payload.messages[payload.messages.length - 1].content.parts.join('\n');
+                    console.log('Full user message from ChatGPT:', userMessage);
+
+                    extractInfoWithGemini(userMessage)
+                        .then(extractedInfoArray => {
+                            console.log('Extracted and saved info from ChatGPT message:', extractedInfoArray);
+                        })
+                        .catch(error => console.error('Error processing ChatGPT message:', error));
+                }
+            } catch (error) {
+                console.error('Error parsing ChatGPT request payload:', error);
+            }
+        }
+    });
 }
 
-// Rename existing request handler to be ChatGPT specific
-function handleChatGPTRequest(details) {
-   // console.log('Intercepted ChatGPT API request:', details);
-    
-    if (details.requestBody && details.requestBody.raw) {
-        const rawData = details.requestBody.raw[0].bytes;
-        const decodedString = decodeURIComponent(String.fromCharCode.apply(null, new Uint8Array(rawData)));
-        try {
-            const payload = JSON.parse(decodedString);
-           // console.log('Parsed ChatGPT request payload:', payload);
-            
-            if (payload.messages && payload.messages.length > 0) {
-                const userMessage = payload.messages[payload.messages.length - 1].content.parts.join('\n');
-                console.log('Full user message from ChatGPT:', userMessage);
-
-                extractInfoWithGemini(userMessage)
-                    .then(extractedInfoArray => {
-                        console.log('Extracted and saved info from ChatGPT message:', extractedInfoArray);
-                    })
-                    .catch(error => console.error('Error processing ChatGPT message:', error));
-            }
-        } catch (error) {
-            console.error('Error parsing ChatGPT request payload:', error);
+// Update the handleClaudeRequest function similarly
+function handleClaudeRequest(details) {
+    chrome.storage.local.get('autoSubmitEnabled', (result) => {
+        if (!result.autoSubmitEnabled) {
+            console.log('Infinite memory disabled - skipping memory storage');
+            return;
         }
-    }
+        
+        if (details.requestBody && details.requestBody.raw) {
+            const rawData = details.requestBody.raw[0].bytes;
+            const decodedString = decodeURIComponent(String.fromCharCode.apply(null, new Uint8Array(rawData)));
+            try {
+                const payload = JSON.parse(decodedString);
+                
+                if (payload.prompt) {
+                    const userMessage = payload.prompt;
+                    console.log('Full user message from Claude:', userMessage);
+
+                    extractInfoWithGemini(userMessage)
+                        .then(extractedInfoArray => {
+                            console.log('Extracted and saved info from Claude message:', extractedInfoArray);
+                        })
+                        .catch(error => console.error('Error processing Claude message:', error));
+                }
+            } catch (error) {
+                console.error('Error parsing Claude request payload:', error);
+            }
+        }
+    });
 }
 
 // Ensure content script is loaded before sending messages

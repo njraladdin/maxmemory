@@ -1,5 +1,5 @@
 edit memories, done
-update gemini model 
-don't store memories when  infinite memory is disabled
+update gemini model, done 
+don't store memories when  infinite memory is disabled, done 
 manually add a memory 
 add pagination to memories list
