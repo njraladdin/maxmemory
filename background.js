@@ -577,6 +577,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         });
     }
 
+    if (request.type === 'EDIT_MEMORY') {
+        getEmbedding(request.text)
+            .then(embedding => editMemory(request.id, request.text, embedding))
+            .then(() => {
+                sendResponse({ status: 'success' });
+            })
+            .catch(error => {
+                console.error('Error editing memory:', error);
+                sendResponse({ status: 'error', message: 'Failed to edit memory.' });
+            });
+        return true;
+    }
+
     console.warn('Unhandled message type:', request.type);
     sendResponse({ status: 'error', message: 'Unhandled message type.' });
     return false;
@@ -598,6 +611,46 @@ async function deleteMemory(id) {
         request.onerror = () => {
             console.error('Error deleting memory:', request.error);
             reject(request.error);
+        };
+    });
+}
+
+// Add this new function to edit a memory
+async function editMemory(id, newText, newEmbedding) {
+    console.log('Editing memory with id:', id);
+    const db = await initDB();
+    const transaction = db.transaction([storeName], 'readwrite');
+    const store = transaction.objectStore(storeName);
+
+    return new Promise((resolve, reject) => {
+        const getRequest = store.get(id);
+        
+        getRequest.onsuccess = () => {
+            const memory = getRequest.result;
+            if (!memory) {
+                reject(new Error('Memory not found'));
+                return;
+            }
+
+            memory.text = newText;
+            memory.embedding = newEmbedding;
+            
+            const updateRequest = store.put(memory);
+            
+            updateRequest.onsuccess = () => {
+                console.log('Memory updated successfully');
+                resolve();
+            };
+            
+            updateRequest.onerror = () => {
+                console.error('Error updating memory:', updateRequest.error);
+                reject(updateRequest.error);
+            };
+        };
+        
+        getRequest.onerror = () => {
+            console.error('Error getting memory:', getRequest.error);
+            reject(getRequest.error);
         };
     });
 }

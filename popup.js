@@ -111,7 +111,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const memoryDiv = document.createElement('div');
             memoryDiv.className = 'memory-item';
             
-            // Check if memory is less than 30 minutes old (30 * 60 * 1000 ms)
             const isNew = (Date.now() - memory.timestamp) < 30 * 60 * 1000;
             const newTag = isNew ? '<span class="new-tag">New</span>' : '';
 
@@ -120,22 +119,56 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="memory-content">
                         <div class="memory-text-container">
                             ${newTag}
-                            <span class="memory-text">${memory.text}</span>
+                            <span class="memory-text" contenteditable="false">${memory.text}</span>
                         </div>
                     </div>
                     <div class="memory-footer">
                         <div class="memory-date">${formatDate(memory.timestamp)}</div>
-                        <button class="delete-button" data-id="${memory.id}">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path>
-                            </svg>
-                            Delete
-                        </button>
+                        <div class="memory-actions">
+                            <button class="action-button edit-button" data-id="${memory.id}" title="Edit">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
+                            </button>
+                            <button class="action-button delete-button" data-id="${memory.id}" title="Delete">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                 </div>
             `;
             
+            const editButton = memoryDiv.querySelector('.edit-button');
             const deleteButton = memoryDiv.querySelector('.delete-button');
+            const textElement = memoryDiv.querySelector('.memory-text');
+            
+            editButton.addEventListener('click', () => {
+                if (textElement.getAttribute('contenteditable') === 'true') {
+                    // Save changes
+                    editButton.disabled = true;
+                    editButton.innerHTML = `
+                        <svg class="spinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <path d="M12 2a10 10 0 0 1 10 10"></path>
+                        </svg>
+                    `;
+                    saveEdit(memory.id, textElement, editButton);
+                } else {
+                    // Enter edit mode
+                    textElement.setAttribute('contenteditable', 'true');
+                    textElement.classList.add('editing');
+                    textElement.focus();
+                    editButton.innerHTML = `
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    `;
+                }
+            });
+            
             deleteButton.addEventListener('click', () => deleteMemory(memory.id));
             
             allMemoriesContainer.appendChild(memoryDiv);
@@ -357,10 +390,192 @@ style.textContent = `
         display: flex;
         align-items: flex-start;
         gap: 8px;
+        width: 100%;
     }
 
     .memory-text {
         flex: 1;
+        width: 100%;
+        min-width: 0;
+    }
+
+    /* Keep the edit button styles */
+    .edit-button {
+        background: #f3f4f6;
+        color: #1f2937;
+        border: none;
+        border-radius: 4px;
+        padding: 4px 8px;
+        cursor: pointer;
+        font-size: 11px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        margin-right: 8px;
+    }
+
+    .edit-button:hover {
+        background: #e5e7eb;
+    }
+
+    /* Update the editing styles */
+    .memory-text.editing {
+        display: block;
+        padding: 8px;
+        background: white;
+        border: 1px solid #e5e5e5;
+        border-radius: 6px;
+        min-height: 60px;
+        width: 100%;
+        font-size: 14px;
+        line-height: 1.5;
+        resize: vertical;
+        box-sizing: border-box;
+        margin: 0;
+    }
+
+    .memory-card {
+        margin-bottom: 12px;
+        padding: 16px;
+        border-radius: 12px;
+        background: #ffffff;
+        border: 1px solid #e5e5e5;
+        transition: all 0.2s ease;
+    }
+
+    .memory-card:hover {
+        border-color: #d1d5db;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    .memory-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid #f3f4f6;
+    }
+
+    .memory-date {
+        font-size: 12px;
+        color: #6b7280;
+    }
+
+    .memory-actions {
+        display: flex;
+        gap: 4px;
+    }
+
+    .action-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: none;
+        border-radius: 6px;
+        background: transparent;
+        color: #6b7280;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .action-button:hover {
+        background: #f3f4f6;
+        color: #1f2937;
+    }
+
+    .edit-button.active {
+        background: #f3f4f6;
+        color: #4F46E5;
+    }
+
+    .delete-button:hover {
+        background: #FEE2E2;
+        color: #DC2626;
+    }
+
+    .memory-text.editing {
+        display: block;
+        padding: 8px;
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        min-height: 60px;
+        width: 100%;
+        font-size: 14px;
+        line-height: 1.5;
+        resize: vertical;
+        box-sizing: border-box;
+        margin: 0;
+        outline: none;
+        transition: all 0.2s ease;
+    }
+
+    .memory-text.editing:focus {
+        background: white;
+        border-color: #4F46E5;
+        box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+    }
+
+    .spinner {
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+
+    .action-button:disabled {
+        opacity: 0.7;
+        cursor: wait;
     }
 `;
 document.head.appendChild(style);
+
+// Add these new functions for edit functionality
+async function saveEdit(id, textElement, editButton) {
+    const newText = textElement.textContent.trim();
+    
+    if (!newText) {
+        alert('Memory text cannot be empty.');
+        return;
+    }
+    
+    try {
+        const response = await chrome.runtime.sendMessage({ 
+            type: 'EDIT_MEMORY', 
+            id: id,
+            text: newText
+        });
+        
+        if (response.status === 'success') {
+            textElement.setAttribute('contenteditable', 'false');
+            textElement.classList.remove('editing');
+            editButton.disabled = false;
+            editButton.innerHTML = `
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+            `;
+        } else {
+            throw new Error(response.message || 'Failed to save changes.');
+        }
+    } catch (error) {
+        console.error('Error saving edit:', error);
+        alert('Failed to save changes. Please try again.');
+        editButton.disabled = false;
+        editButton.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M5 13l4 4L19 7"></path>
+            </svg>
+        `;
+    }
+}

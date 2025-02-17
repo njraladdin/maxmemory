@@ -462,6 +462,36 @@
       opacity: 1;
       color: #4F46E5;
     }
+
+    .edit-button {
+        background: #f3f4f6;
+        color: #1f2937;
+        border: none;
+        border-radius: 4px;
+        padding: 4px 8px;
+        cursor: pointer;
+        font-size: 11px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        margin-right: 8px;
+    }
+
+    .edit-button:hover {
+        background: #e5e7eb;
+    }
+
+    /* Add styles for inline editing */
+    .memory-text.editing {
+        padding: 8px;
+        background: white;
+        border: 1px solid #e5e5e5;
+        border-radius: 6px;
+        min-height: 60px;
+        width: 100%;
+        font-size: 14px;
+        line-height: 1.5;
+        resize: vertical;
+    }
   </style>
 </head>
 <body>
