@@ -220,6 +220,73 @@ document.addEventListener('DOMContentLoaded', function() {
     // Add API key related listeners
     document.getElementById('save-api-key').addEventListener('click', saveApiKey);
     checkApiKey();
+
+    // Add memory modal functionality
+    const addMemoryButton = document.getElementById('add-memory-button');
+    const addMemorySection = document.getElementById('add-memory-section');
+    const newMemoryInput = document.getElementById('new-memory-input');
+    const cancelAddMemory = document.getElementById('cancel-add-memory');
+    const confirmAddMemory = document.getElementById('confirm-add-memory');
+
+    addMemoryButton.addEventListener('click', () => {
+        addMemorySection.style.display = 'block';
+        addMemoryButton.style.display = 'none';
+        newMemoryInput.focus();
+    });
+
+    function hideAddMemorySection() {
+        addMemorySection.style.display = 'none';
+        addMemoryButton.style.display = 'block';
+        newMemoryInput.value = '';
+    }
+
+    cancelAddMemory.addEventListener('click', hideAddMemorySection);
+
+    confirmAddMemory.addEventListener('click', async () => {
+        const text = newMemoryInput.value.trim();
+        if (!text) return;
+
+        // Show loading state
+        confirmAddMemory.disabled = true;
+        confirmAddMemory.innerHTML = `
+            <svg class="spinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M12 2a10 10 0 0 1 10 10"></path>
+            </svg>
+        `;
+
+        try {
+            const response = await chrome.runtime.sendMessage({ 
+                type: 'SAVE_MEMORY', 
+                text: text 
+            });
+
+            if (response.status === 'success') {
+                hideAddMemorySection();
+                loadMemories(); // Reload the memories list
+            } else {
+                throw new Error(response.message || 'Failed to save memory');
+            }
+        } catch (error) {
+            console.error('Error saving memory:', error);
+            alert('Failed to save memory. Please try again.');
+        } finally {
+            // Reset button state
+            confirmAddMemory.disabled = false;
+            confirmAddMemory.innerHTML = `
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            `;
+        }
+    });
+
+    // Add Escape key support
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && addMemorySection.style.display === 'block') {
+            hideAddMemorySection();
+        }
+    });
 });
 
 // Update the saveApiKey function

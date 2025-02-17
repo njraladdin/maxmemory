@@ -492,6 +492,218 @@
         line-height: 1.5;
         resize: vertical;
     }
+
+    .add-memory-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: none;
+        border-radius: 6px;
+        background: #f3f4f6;
+        color: #6b7280;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        margin-left: auto;
+    }
+
+    .add-memory-button:hover {
+        background: #e5e7eb;
+        color: #4F46E5;
+    }
+
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 500px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    #new-memory-input {
+        width: 100%;
+        min-height: 100px;
+        padding: 12px;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        margin-bottom: 16px;
+        font-size: 14px;
+        line-height: 1.5;
+        resize: vertical;
+    }
+
+    .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+
+    .secondary-button {
+        padding: 8px 16px;
+        border: 1px solid #e5e7eb;
+        background: white;
+        border-radius: 6px;
+        cursor: pointer;
+    }
+
+    .primary-button {
+        padding: 8px 16px;
+        background: #4F46E5;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+    }
+
+    .primary-button:hover {
+        background: #4338CA;
+    }
+
+    /* Add these new styles */
+    .controls-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 16px;
+        gap: 12px;
+    }
+
+    .sort-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 32px;  /* Match the height of the select and add button */
+    }
+
+    #sort-memories {
+        height: 32px;
+        padding: 0 32px 0 12px;
+        border-radius: 6px;
+        border: 1px solid #e5e5e5;
+        background-color: white;
+        font-size: 13px;
+        color: #1f2937;
+    }
+
+    /* Update the add button styling */
+    #add-memory-button {
+        height: 32px;
+        width: 32px;
+        background-color: white;
+        border: 1px solid #e5e5e5;
+        color: #6b7280;
+    }
+
+    #add-memory-button:hover {
+        background-color: #f9fafb;
+        border-color: #d1d5db;
+        color: #4F46E5;
+    }
+
+    .add-memory-section {
+        margin-bottom: 16px;
+        padding: 12px;
+        border-radius: 12px;
+        background: white;
+        border: 1px solid #e5e5e5;
+        transition: all 0.2s ease;
+    }
+
+    .add-memory-section:hover {
+        border-color: #d1d5db;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    #new-memory-input {
+        width: 100%;
+        padding: 8px 0;
+        border: none;
+        font-size: 14px;
+        line-height: 1.5;
+        resize: none;
+        background: transparent;
+        margin-bottom: 8px;
+    }
+
+    #new-memory-input:focus {
+        outline: none;
+    }
+
+    .memory-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 4px;
+        padding-top: 8px;
+        border-top: 1px solid #f3f4f6;
+    }
+
+    .action-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: none;
+        border-radius: 6px;
+        background: transparent;
+        color: #6b7280;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .action-button:hover {
+        background: #f3f4f6;
+        color: #1f2937;
+    }
+
+    #confirm-add-memory:hover {
+        color: #10B981;
+        background: #F0FDF4;
+    }
+
+    #cancel-add-memory:hover {
+        color: #DC2626;
+        background: #FEF2F2;
+    }
+
+    .spinner {
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+
+    .action-button:disabled {
+        opacity: 0.7;
+        cursor: wait;
+    }
   </style>
 </head>
 <body>
@@ -533,12 +745,34 @@
     </div>
 
     <div class="main-content">
-      <div class="sort-controls">
-        <label for="sort-memories">Sort by:</label>
-        <select id="sort-memories">
-          <option value="newest">Newest First</option>
-          <option value="oldest">Oldest First</option>
-        </select>
+      <div class="controls-row">
+        <div class="sort-controls">
+            <label for="sort-memories">Sort by:</label>
+            <select id="sort-memories">
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+            </select>
+        </div>
+        <button id="add-memory-button" class="action-button" title="Add Memory">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14M5 12h14" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </button>
+      </div>
+      <div id="add-memory-section" class="add-memory-section" style="display: none;">
+        <textarea id="new-memory-input" placeholder="Type your memory here..." rows="3"></textarea>
+        <div class="memory-actions">
+            <button id="cancel-add-memory" class="action-button" title="Cancel">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+            <button id="confirm-add-memory" class="action-button" title="Save">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+        </div>
       </div>
       
       <div class="memory-count" id="memory-count"></div>
