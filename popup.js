@@ -1,5 +1,11 @@
 // popup.js 
 
+// Add these variables at the top of the file
+let currentPage = 1;
+const itemsPerPage = 50;
+let totalPages = 1;
+let allMemoriesData = [];
+
 // Function to save a memory by sending a message to background.js
 async function saveMemory() {
     const input = document.getElementById('memory-input');
@@ -39,29 +45,22 @@ async function loadAllMemories() {
         console.log('Received response for GET_ALL_MEMORIES:', response);
 
         if (response && response.status === 'success' && Array.isArray(response.memories)) {
-            const memories = response.memories;
             const sortOrder = document.getElementById('sort-memories').value;
-
-            memories.sort((a, b) => {
+            allMemoriesData = response.memories.sort((a, b) => {
                 return sortOrder === 'newest'
                     ? b.timestamp - a.timestamp
                     : a.timestamp - b.timestamp;
             });
 
-            const container = document.getElementById('all-memories');
+            totalPages = Math.ceil(allMemoriesData.length / itemsPerPage);
+            currentPage = Math.min(currentPage, totalPages);
+            
+            updatePaginationControls();
+            displayMemoriesPage(currentPage);
+            
             document.getElementById('memory-count').textContent =
-                `Total Memories: ${memories.length}`;
-
-            container.innerHTML = memories.map(memory => `
-                <div class="memory-card">
-                    <div class="memory-text">${memory.text}</div>
-                    <div class="memory-meta">
-                        Added: ${formatDate(memory.timestamp)}
-                    </div>
-                </div>
-            `).join('');
+                `Total Memories: ${allMemoriesData.length}`;
         } else {
-            // Log the entire response for debugging
             console.warn('Unexpected response structure:', response);
             throw new Error(response?.message || 'Unknown error.');
         }
@@ -103,93 +102,28 @@ document.addEventListener('DOMContentLoaded', function() {
     const memoryCountElement = document.getElementById('memory-count');
     const sortSelect = document.getElementById('sort-memories');
     
-    function displayMemories(memories) {
-        allMemoriesContainer.innerHTML = '';
-        memoryCountElement.textContent = `${memories.length} memories stored`;
-        
-        memories.forEach(memory => {
-            const memoryDiv = document.createElement('div');
-            memoryDiv.className = 'memory-item';
-            
-            const isNew = (Date.now() - memory.timestamp) < 30 * 60 * 1000;
-            const newTag = isNew ? '<span class="new-tag">New</span>' : '';
-
-            memoryDiv.innerHTML = `
-                <div class="memory-card">
-                    <div class="memory-content">
-                        <div class="memory-text-container">
-                            ${newTag}
-                            <span class="memory-text" contenteditable="false">${memory.text}</span>
-                        </div>
-                    </div>
-                    <div class="memory-footer">
-                        <div class="memory-date">${formatDate(memory.timestamp)}</div>
-                        <div class="memory-actions">
-                            <button class="action-button edit-button" data-id="${memory.id}" title="Edit">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"></path>
-                                    <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                </svg>
-                            </button>
-                            <button class="action-button delete-button" data-id="${memory.id}" title="Delete">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            const editButton = memoryDiv.querySelector('.edit-button');
-            const deleteButton = memoryDiv.querySelector('.delete-button');
-            const textElement = memoryDiv.querySelector('.memory-text');
-            
-            editButton.addEventListener('click', () => {
-                if (textElement.getAttribute('contenteditable') === 'true') {
-                    // Save changes
-                    editButton.disabled = true;
-                    editButton.innerHTML = `
-                        <svg class="spinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <path d="M12 2a10 10 0 0 1 10 10"></path>
-                        </svg>
-                    `;
-                    saveEdit(memory.id, textElement, editButton);
-                } else {
-                    // Enter edit mode
-                    textElement.setAttribute('contenteditable', 'true');
-                    textElement.classList.add('editing');
-                    textElement.focus();
-                    editButton.innerHTML = `
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M5 13l4 4L19 7"></path>
-                        </svg>
-                    `;
-                }
-            });
-            
-            deleteButton.addEventListener('click', () => deleteMemory(memory.id));
-            
-            allMemoriesContainer.appendChild(memoryDiv);
-        });
-    }
-    
     async function loadMemories() {
         try {
             const response = await chrome.runtime.sendMessage({ type: 'GET_ALL_MEMORIES' });
             if (response.status === 'success' && response.memories) {
-                let memories = response.memories;
-                
                 // Sort memories based on selected option
-                const sortBy = sortSelect.value;
+                const sortBy = document.getElementById('sort-memories').value;
+                allMemoriesData = response.memories;
+                
                 if (sortBy === 'newest') {
-                    memories.sort((a, b) => b.timestamp - a.timestamp);
+                    allMemoriesData.sort((a, b) => b.timestamp - a.timestamp);
                 } else if (sortBy === 'oldest') {
-                    memories.sort((a, b) => a.timestamp - b.timestamp);
+                    allMemoriesData.sort((a, b) => a.timestamp - b.timestamp);
                 }
                 
-                displayMemories(memories);
+                totalPages = Math.ceil(allMemoriesData.length / itemsPerPage);
+                currentPage = Math.min(currentPage, totalPages);
+                
+                updatePaginationControls();
+                displayMemoriesPage(currentPage);
+                
+                document.getElementById('memory-count').textContent =
+                    `Total Memories: ${allMemoriesData.length}`;
             }
         } catch (error) {
             console.error('Error loading memories:', error);
@@ -204,7 +138,14 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             
             if (response.status === 'success') {
-                loadMemories(); // Reload the list after deletion
+                // After successful deletion, reload memories and stay on current page if possible
+                const currentPageBeforeDelete = currentPage;
+                await loadMemories();
+                if (currentPageBeforeDelete <= totalPages) {
+                    currentPage = currentPageBeforeDelete;
+                    displayMemoriesPage(currentPage);
+                    updatePaginationControls();
+                }
             }
         } catch (error) {
             console.error('Error deleting memory:', error);
@@ -246,7 +187,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const text = newMemoryInput.value.trim();
         if (!text) return;
 
-        // Show loading state
         confirmAddMemory.disabled = true;
         confirmAddMemory.innerHTML = `
             <svg class="spinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -263,7 +203,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (response.status === 'success') {
                 hideAddMemorySection();
-                loadMemories(); // Reload the memories list
+                currentPage = 1; // Go to first page to see the new memory
+                await loadMemories();
             } else {
                 throw new Error(response.message || 'Failed to save memory');
             }
@@ -271,7 +212,6 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Error saving memory:', error);
             alert('Failed to save memory. Please try again.');
         } finally {
-            // Reset button state
             confirmAddMemory.disabled = false;
             confirmAddMemory.innerHTML = `
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -286,6 +226,29 @@ document.addEventListener('DOMContentLoaded', function() {
         if (e.key === 'Escape' && addMemorySection.style.display === 'block') {
             hideAddMemorySection();
         }
+    });
+
+    // Add pagination button listeners
+    document.getElementById('prev-page').addEventListener('click', () => {
+        if (currentPage > 1) {
+            currentPage--;
+            displayMemoriesPage(currentPage);
+            updatePaginationControls();
+        }
+    });
+
+    document.getElementById('next-page').addEventListener('click', () => {
+        if (currentPage < totalPages) {
+            currentPage++;
+            displayMemoriesPage(currentPage);
+            updatePaginationControls();
+        }
+    });
+
+    // Update sort memories event listener
+    document.getElementById('sort-memories').addEventListener('change', () => {
+        currentPage = 1; // Reset to first page when sorting
+        loadAllMemories();
     });
 });
 
@@ -603,6 +566,43 @@ style.textContent = `
         opacity: 0.7;
         cursor: wait;
     }
+
+    .pagination-controls {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        margin-top: 24px;
+        padding: 16px 0;
+    }
+
+    .pagination-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border: 1px solid #e5e5e5;
+        background: white;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .pagination-button:hover:not(:disabled) {
+        background: #f3f4f6;
+        border-color: #d1d5db;
+    }
+
+    .pagination-button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    #page-info {
+        font-size: 13px;
+        color: #6b7280;
+    }
 `;
 document.head.appendChild(style);
 
@@ -645,4 +645,72 @@ async function saveEdit(id, textElement, editButton) {
             </svg>
         `;
     }
+}
+
+// Update the displayMemoriesPage function to include edit/delete functionality
+function displayMemoriesPage(page) {
+    const startIndex = (page - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const memoriesToDisplay = allMemoriesData.slice(startIndex, endIndex);
+
+    const container = document.getElementById('all-memories');
+    container.innerHTML = memoriesToDisplay.map(memory => `
+        <div class="memory-card">
+            <div class="memory-content">
+                <div class="memory-text-container">
+                    ${(Date.now() - memory.timestamp) < 30 * 60 * 1000 ? '<span class="new-tag">New</span>' : ''}
+                    <span class="memory-text" contenteditable="false">${memory.text}</span>
+                </div>
+            </div>
+            <div class="memory-footer">
+                <div class="memory-date">${formatDate(memory.timestamp)}</div>
+                <div class="memory-actions">
+                    <button class="action-button edit-button" data-id="${memory.id}" title="Edit">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                    </button>
+                    <button class="action-button delete-button" data-id="${memory.id}" title="Delete">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+
+    // Add event listeners for edit and delete buttons
+    container.querySelectorAll('.edit-button').forEach(button => {
+        button.addEventListener('click', () => {
+            const textElement = button.closest('.memory-card').querySelector('.memory-text');
+            if (textElement.getAttribute('contenteditable') === 'true') {
+                saveEdit(button.dataset.id, textElement, button);
+            } else {
+                textElement.setAttribute('contenteditable', 'true');
+                textElement.classList.add('editing');
+                textElement.focus();
+                button.innerHTML = `
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 13l4 4L19 7"></path>
+                    </svg>
+                `;
+            }
+        });
+    });
+
+    container.querySelectorAll('.delete-button').forEach(button => {
+        button.addEventListener('click', () => deleteMemory(button.dataset.id));
+    });
+}
+
+function updatePaginationControls() {
+    const prevButton = document.getElementById('prev-page');
+    const nextButton = document.getElementById('next-page');
+    const pageInfo = document.getElementById('page-info');
+
+    prevButton.disabled = currentPage === 1;
+    nextButton.disabled = currentPage === totalPages;
+    pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
 }

@@ -704,6 +704,43 @@
         opacity: 0.7;
         cursor: wait;
     }
+
+    .pagination-controls {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        margin-top: 24px;
+        padding: 16px 0;
+    }
+
+    .pagination-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border: 1px solid #e5e5e5;
+        background: white;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .pagination-button:hover:not(:disabled) {
+        background: #f3f4f6;
+        border-color: #d1d5db;
+    }
+
+    .pagination-button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    #page-info {
+        font-size: 13px;
+        color: #6b7280;
+    }
   </style>
 </head>
 <body>
@@ -777,6 +814,21 @@
       
       <div class="memory-count" id="memory-count"></div>
       <div id="all-memories" class="results-container"></div>
+
+      <!-- Add the pagination controls -->
+      <div class="pagination-controls">
+          <button id="prev-page" class="pagination-button" disabled>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+          </button>
+          <span id="page-info">Page 1 of 1</span>
+          <button id="next-page" class="pagination-button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+          </button>
+      </div>
     </div>
   </div>
 
