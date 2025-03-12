@@ -52,14 +52,19 @@ async function loadAllMemories() {
                     : a.timestamp - b.timestamp;
             });
 
-            totalPages = Math.ceil(allMemoriesData.length / itemsPerPage);
-            currentPage = Math.min(currentPage, totalPages);
+            // Handle empty memories array
+            if (allMemoriesData.length === 0) {
+                totalPages = 1;
+                currentPage = 1;
+                document.getElementById('memory-count').textContent = 'No memories yet';
+            } else {
+                totalPages = Math.ceil(allMemoriesData.length / itemsPerPage);
+                currentPage = Math.min(currentPage, totalPages);
+                document.getElementById('memory-count').textContent = `Total Memories: ${allMemoriesData.length}`;
+            }
             
             updatePaginationControls();
             displayMemoriesPage(currentPage);
-            
-            document.getElementById('memory-count').textContent =
-                `Total Memories: ${allMemoriesData.length}`;
         } else {
             console.warn('Unexpected response structure:', response);
             throw new Error(response?.message || 'Unknown error.');
@@ -227,6 +232,31 @@ document.addEventListener('DOMContentLoaded', function() {
         currentPage = 1; // Reset to first page when sorting
         loadAllMemories();
     });
+
+    // Add API key accordion functionality
+    const apiKeyHeader = document.getElementById('api-key-header');
+    const apiKeyContent = document.getElementById('api-key-content');
+    const apiKeySection = document.getElementById('api-key-section');
+    
+    apiKeyHeader.addEventListener('click', function() {
+        // Get the current API key
+        chrome.storage.local.get('google_api_key', function(result) {
+            const apiKey = result.google_api_key;
+            
+            // Only allow toggling if API key exists
+            if (apiKey) {
+                apiKeyContent.classList.toggle('collapsed');
+                apiKeySection.classList.toggle('expanded');
+                const isExpanded = !apiKeyContent.classList.contains('collapsed');
+                rotateToggleIcon(isExpanded);
+            } else {
+                // If no API key, ensure it stays open
+                apiKeyContent.classList.remove('collapsed');
+                apiKeySection.classList.add('expanded');
+                rotateToggleIcon(true);
+            }
+        });
+    });
 });
 
 // Update the saveApiKey function
@@ -235,24 +265,48 @@ async function saveApiKey() {
     const apiKey = apiKeyInput.value.trim();
     const statusElement = document.getElementById('api-key-status');
     const saveButton = document.getElementById('save-api-key');
+    const apiKeySection = document.getElementById('api-key-section');
+    const apiKeyVerifiedIcon = document.getElementById('api-key-verified-icon');
+    const apiKeyWarningIcon = document.getElementById('api-key-warning-icon');
+    const apiKeyContent = document.getElementById('api-key-content');
+    const apiKeyHeader = document.getElementById('api-key-header');
     
     // Reset states
     statusElement.textContent = '';
     saveButton.classList.remove('verified');
     saveButton.textContent = 'Save API Key';
     showApiKeyWarning(false);
+    apiKeySection.classList.remove('verified');
+    apiKeyVerifiedIcon.style.display = 'none';
+    apiKeyWarningIcon.style.display = 'none';
 
     if (!apiKey) {
         showApiKeyWarning(true);
+        apiKeyWarningIcon.style.display = 'inline-flex';
+        
+        // Keep accordion open when no key
+        apiKeyContent.classList.remove('collapsed');
+        apiKeySection.classList.add('expanded');
+        rotateToggleIcon(true);
+        apiKeyHeader.style.cursor = 'default';
         return;
     }
 
     if (!isValidApiKeyFormat(apiKey)) {
         statusElement.textContent = 'Invalid API key format';
         statusElement.style.color = '#dc2626';
+        apiKeyWarningIcon.style.display = 'inline-flex';
+        
+        // Keep accordion open when invalid key format
+        apiKeyContent.classList.remove('collapsed');
+        apiKeySection.classList.add('expanded');
+        rotateToggleIcon(true);
+        apiKeyHeader.style.cursor = 'default';
         return;
     }
 
+    // Store the original button text and set a fixed width before changing text
+    const originalText = saveButton.textContent;
     saveButton.disabled = true;
     saveButton.textContent = 'Verifying...';
 
@@ -264,6 +318,21 @@ async function saveApiKey() {
             saveButton.classList.add('verified');
             saveButton.textContent = 'Verified';
             showApiKeyWarning(false);
+            
+            // Update accordion state with subtle styling
+            apiKeySection.classList.add('verified');
+            apiKeyVerifiedIcon.style.display = 'inline-flex';
+            apiKeyWarningIcon.style.display = 'none';
+            
+            // Enable accordion toggling
+            apiKeyHeader.style.cursor = 'pointer';
+            
+            // Collapse the content after a short delay
+            setTimeout(() => {
+                apiKeyContent.classList.add('collapsed');
+                apiKeySection.classList.remove('expanded');
+                rotateToggleIcon(false);
+            }, 1000);
         } else {
             throw new Error('Invalid API key');
         }
@@ -272,7 +341,15 @@ async function saveApiKey() {
         statusElement.textContent = 'Invalid API key. Please check and try again.';
         statusElement.style.color = '#dc2626';
         showApiKeyWarning(true);
-        saveButton.textContent = 'Save API Key';
+        saveButton.textContent = originalText;
+        apiKeyWarningIcon.style.display = 'inline-flex';
+        
+        // Keep accordion open when validation fails
+        apiKeyContent.classList.remove('collapsed');
+        apiKeySection.classList.add('expanded');
+        rotateToggleIcon(true);
+        apiKeyHeader.style.cursor = 'default';
+        
         // Remove invalid API key from storage
         await chrome.storage.local.remove('google_api_key');
     } finally {
@@ -286,20 +363,71 @@ async function checkApiKey() {
         const result = await chrome.storage.local.get('google_api_key');
         const apiKey = result.google_api_key;
         const saveButton = document.getElementById('save-api-key');
+        const apiKeySection = document.getElementById('api-key-section');
+        const apiKeyVerifiedIcon = document.getElementById('api-key-verified-icon');
+        const apiKeyWarningIcon = document.getElementById('api-key-warning-icon');
+        const apiKeyContent = document.getElementById('api-key-content');
+        const apiKeyHeader = document.getElementById('api-key-header');
         
         if (apiKey) {
             document.getElementById('api-key-input').value = apiKey;
             showApiKeyWarning(false);
+            
+            // Ensure button width is consistent by setting the class first
             saveButton.classList.add('verified');
             saveButton.textContent = 'Verified';
+            
+            // Set accordion to collapsed state when valid key exists
+            apiKeySection.classList.add('verified');
+            apiKeyVerifiedIcon.style.display = 'inline-flex';
+            apiKeyWarningIcon.style.display = 'none';
+            apiKeyContent.classList.add('collapsed');
+            rotateToggleIcon(false);
+            
+            // Enable accordion toggling
+            apiKeyHeader.style.cursor = 'pointer';
         } else {
             showApiKeyWarning(true);
+            
+            // Ensure button width is consistent
             saveButton.classList.remove('verified');
             saveButton.textContent = 'Save API Key';
+            
+            // Keep accordion expanded when no key exists and ensure it can't be closed
+            apiKeySection.classList.remove('verified');
+            apiKeyVerifiedIcon.style.display = 'none';
+            apiKeyWarningIcon.style.display = 'inline-flex';
+            apiKeyContent.classList.remove('collapsed');
+            apiKeySection.classList.add('expanded');
+            rotateToggleIcon(true);
+            
+            // Disable accordion toggling visual cue
+            apiKeyHeader.style.cursor = 'default';
         }
     } catch (error) {
         console.error('Error checking API key:', error);
         showApiKeyWarning(true);
+        document.getElementById('api-key-warning-icon').style.display = 'inline-flex';
+        
+        // Keep accordion expanded in case of error
+        const apiKeyContent = document.getElementById('api-key-content');
+        const apiKeySection = document.getElementById('api-key-section');
+        const apiKeyHeader = document.getElementById('api-key-header');
+        
+        apiKeyContent.classList.remove('collapsed');
+        apiKeySection.classList.add('expanded');
+        rotateToggleIcon(true);
+        apiKeyHeader.style.cursor = 'default';
+    }
+}
+
+// Helper function to rotate the toggle icon
+function rotateToggleIcon(expanded) {
+    const toggleIcon = document.getElementById('api-key-toggle');
+    if (expanded) {
+        toggleIcon.style.transform = 'rotate(0deg)';
+    } else {
+        toggleIcon.style.transform = 'rotate(-90deg)';
     }
 }
 
@@ -367,9 +495,9 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
         
-        // Insert help text before the API key input
-        const apiKeyContainer = apiKeySection.querySelector('.api-key-container');
-        apiKeySection.insertBefore(helpText, apiKeyContainer);
+        // Insert help text at the beginning of the content area
+        const apiKeyContent = document.getElementById('api-key-content');
+        apiKeyContent.insertBefore(helpText, apiKeyContent.firstChild);
     }
 });
 
@@ -580,6 +708,70 @@ style.textContent = `
         font-size: 13px;
         color: #6b7280;
     }
+
+    /* Apple-style empty state */
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 40px 20px;
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid #f3f4f6;
+        margin: 20px 0;
+    }
+
+    .empty-state-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 80px;
+        height: 80px;
+        background: #f9fafb;
+        border-radius: 20px;
+        margin-bottom: 16px;
+    }
+
+    .empty-state-title {
+        font-size: 17px;
+        font-weight: 600;
+        color: #1f2937;
+        margin: 0 0 8px 0;
+    }
+
+    .empty-state-description {
+        font-size: 14px;
+        line-height: 1.5;
+        color: #6b7280;
+        margin: 0 0 24px 0;
+        max-width: 280px;
+    }
+
+    .empty-state-button {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        background: #f3f4f6;
+        color: #1f2937;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .empty-state-button:hover {
+        background: #e5e7eb;
+        color: #111827;
+    }
+
+    .empty-state-button svg {
+        color: #4F46E5;
+    }
 `;
 document.head.appendChild(style);
 
@@ -631,6 +823,42 @@ function displayMemoriesPage(page) {
     const memoriesToDisplay = allMemoriesData.slice(startIndex, endIndex);
 
     const container = document.getElementById('all-memories');
+    
+    // Check if there are no memories to display
+    if (allMemoriesData.length === 0) {
+        // Apple-style empty state
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5">
+                        <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <h3 class="empty-state-title">No Memories Yet</h3>
+                <p class="empty-state-description">Your memories will appear here. Click the + button above to create your first memory.</p>
+                <button id="empty-state-add-button" class="empty-state-button">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 5v14M5 12h14" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Add Your First Memory
+                </button>
+            </div>
+        `;
+        
+        // Add event listener to the empty state add button
+        document.getElementById('empty-state-add-button').addEventListener('click', () => {
+            const addMemoryButton = document.getElementById('add-memory-button');
+            const addMemorySection = document.getElementById('add-memory-section');
+            
+            addMemorySection.style.display = 'block';
+            addMemoryButton.style.display = 'none';
+            document.getElementById('new-memory-input').focus();
+        });
+        
+        return;
+    }
+    
+    // Regular display of memories
     container.innerHTML = memoriesToDisplay.map(memory => `
         <div class="memory-card">
             <div class="memory-content">
@@ -694,6 +922,15 @@ function updatePaginationControls() {
     const prevButton = document.getElementById('prev-page');
     const nextButton = document.getElementById('next-page');
     const pageInfo = document.getElementById('page-info');
+    const paginationControls = document.querySelector('.pagination-controls');
+
+    // Hide pagination controls when there are no memories
+    if (allMemoriesData.length === 0) {
+        paginationControls.style.display = 'none';
+        return;
+    } else {
+        paginationControls.style.display = 'flex';
+    }
 
     prevButton.disabled = currentPage === 1;
     nextButton.disabled = currentPage === totalPages;
