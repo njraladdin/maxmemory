@@ -248,6 +248,15 @@ async function getAllMemories() {
         request.onsuccess = () => {
             const memories = request.result;
             console.log(`Fetched ${memories.length} memories from IndexedDB`);
+            
+            // Debug: Log ID types for the first few memories
+            if (memories.length > 0) {
+                console.log('Sample memory IDs and their types:');
+                memories.slice(0, 3).forEach(memory => {
+                    console.log(`Memory ID: ${memory.id}, Type: ${typeof memory.id}`);
+                });
+            }
+            
             resolve(memories);
         };
         request.onerror = () => {
@@ -567,6 +576,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
 
     if (request.type === 'DELETE_MEMORY') {
+        // Log the received ID for debugging
+        console.log('Received DELETE_MEMORY request with id:', request.id, 'type:', typeof request.id);
+        
         deleteMemory(request.id)
             .then(() => {
                 sendResponse({ status: 'success' });
@@ -585,6 +597,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
 
     if (request.type === 'EDIT_MEMORY') {
+        // Log the received ID for debugging
+        console.log('Received EDIT_MEMORY request with id:', request.id, 'type:', typeof request.id);
+        
         getEmbedding(request.text)
             .then(embedding => editMemory(request.id, request.text, embedding))
             .then(() => {
@@ -605,12 +620,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // Add this new function to delete a memory
 async function deleteMemory(id) {
     console.log('Deleting memory with id:', id);
+    // Convert id to number if it's a string and represents a number
+    const numericId = typeof id === 'string' ? parseInt(id, 10) : id;
+    console.log('Using numeric id:', numericId);
+    
     const db = await initDB();
     const transaction = db.transaction([storeName], 'readwrite');
     const store = transaction.objectStore(storeName);
 
     return new Promise((resolve, reject) => {
-        const request = store.delete(id);
+        const request = store.delete(numericId);
         request.onsuccess = () => {
             console.log('Memory deleted successfully');
             resolve();
@@ -625,16 +644,21 @@ async function deleteMemory(id) {
 // Add this new function to edit a memory
 async function editMemory(id, newText, newEmbedding) {
     console.log('Editing memory with id:', id);
+    // Convert id to number if it's a string and represents a number
+    const numericId = typeof id === 'string' ? parseInt(id, 10) : id;
+    console.log('Using numeric id:', numericId);
+    
     const db = await initDB();
     const transaction = db.transaction([storeName], 'readwrite');
     const store = transaction.objectStore(storeName);
 
     return new Promise((resolve, reject) => {
-        const getRequest = store.get(id);
+        const getRequest = store.get(numericId);
         
         getRequest.onsuccess = () => {
             const memory = getRequest.result;
             if (!memory) {
+                console.error('Memory not found with id:', numericId);
                 reject(new Error('Memory not found'));
                 return;
             }

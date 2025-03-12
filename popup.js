@@ -70,6 +70,33 @@ async function loadAllMemories() {
     }
 }
 
+// Function to delete a memory
+async function deleteMemory(id) {
+    console.log('Attempting to delete memory with ID:', id);
+    try {
+        const response = await chrome.runtime.sendMessage({ 
+            type: 'DELETE_MEMORY', 
+            id: id 
+        });
+        
+        console.log('Received delete response:', response);
+        
+        if (response.status === 'success') {
+            // After successful deletion, reload memories and stay on current page if possible
+            const currentPageBeforeDelete = currentPage;
+            await loadAllMemories();
+            if (currentPageBeforeDelete <= totalPages) {
+                currentPage = currentPageBeforeDelete;
+                displayMemoriesPage(currentPage);
+                updatePaginationControls();
+            }
+        }
+    } catch (error) {
+        console.error('Error deleting memory:', error);
+        alert('Error deleting memory. Please try again.');
+    }
+}
+
 // Helper function to format timestamp
 function formatDate(timestamp) {
     return new Date(timestamp).toLocaleString();
@@ -102,61 +129,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const memoryCountElement = document.getElementById('memory-count');
     const sortSelect = document.getElementById('sort-memories');
     
-    async function loadMemories() {
-        try {
-            const response = await chrome.runtime.sendMessage({ type: 'GET_ALL_MEMORIES' });
-            if (response.status === 'success' && response.memories) {
-                // Sort memories based on selected option
-                const sortBy = document.getElementById('sort-memories').value;
-                allMemoriesData = response.memories;
-                
-                if (sortBy === 'newest') {
-                    allMemoriesData.sort((a, b) => b.timestamp - a.timestamp);
-                } else if (sortBy === 'oldest') {
-                    allMemoriesData.sort((a, b) => a.timestamp - b.timestamp);
-                }
-                
-                totalPages = Math.ceil(allMemoriesData.length / itemsPerPage);
-                currentPage = Math.min(currentPage, totalPages);
-                
-                updatePaginationControls();
-                displayMemoriesPage(currentPage);
-                
-                document.getElementById('memory-count').textContent =
-                    `Total Memories: ${allMemoriesData.length}`;
-            }
-        } catch (error) {
-            console.error('Error loading memories:', error);
-        }
-    }
-    
-    async function deleteMemory(id) {
-        try {
-            const response = await chrome.runtime.sendMessage({ 
-                type: 'DELETE_MEMORY', 
-                id: id 
-            });
-            
-            if (response.status === 'success') {
-                // After successful deletion, reload memories and stay on current page if possible
-                const currentPageBeforeDelete = currentPage;
-                await loadMemories();
-                if (currentPageBeforeDelete <= totalPages) {
-                    currentPage = currentPageBeforeDelete;
-                    displayMemoriesPage(currentPage);
-                    updatePaginationControls();
-                }
-            }
-        } catch (error) {
-            console.error('Error deleting memory:', error);
-        }
-    }
-    
     // Add event listeners
-    sortSelect.addEventListener('change', loadMemories);
+    sortSelect.addEventListener('change', loadAllMemories);
     
     // Initial load
-    loadMemories();
+    loadAllMemories();
 
     // Add API key related listeners
     document.getElementById('save-api-key').addEventListener('click', saveApiKey);
@@ -204,7 +181,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (response.status === 'success') {
                 hideAddMemorySection();
                 currentPage = 1; // Go to first page to see the new memory
-                await loadMemories();
+                await loadAllMemories();
             } else {
                 throw new Error(response.message || 'Failed to save memory');
             }
@@ -701,7 +678,15 @@ function displayMemoriesPage(page) {
     });
 
     container.querySelectorAll('.delete-button').forEach(button => {
-        button.addEventListener('click', () => deleteMemory(button.dataset.id));
+        button.addEventListener('click', () => {
+            console.log('Delete button clicked for memory ID:', button.dataset.id);
+            const memoryId = button.dataset.id;
+            if (!memoryId) {
+                console.error('No memory ID found in button data attribute');
+                return;
+            }
+            deleteMemory(memoryId);
+        });
     });
 }
 
