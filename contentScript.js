@@ -1,6 +1,19 @@
 // contentScript.js
 
 (function() {
+    // Selector constants - easy to configure
+    const CHATGPT_SELECTORS = {
+        INPUT_BOX: '#prompt-textarea',
+        FORM: 'form[data-type="unified-composer"]',
+        SUBMIT_BUTTON: 'button[data-testid="send-button"]'
+    };
+    
+    const CLAUDE_SELECTORS = {
+        INPUT_BOX: 'div[contenteditable="true"]',
+        FORM: 'fieldset',
+        SUBMIT_BUTTON: 'button[aria-label="Send Message"]'
+    };
+
     const styles = `
         .memory-section {
             display: flex;
@@ -148,7 +161,7 @@
     };
 
     const getInputBox = () => {
-        const inputBox = document.querySelector('#prompt-textarea, div[contenteditable="true"]');
+        const inputBox = document.querySelector(`${CHATGPT_SELECTORS.INPUT_BOX}, ${CLAUDE_SELECTORS.INPUT_BOX}`);
         console.log('Looking for input box:', inputBox);
         return inputBox;
     };
@@ -188,7 +201,7 @@
         const checkbox = document.getElementById('auto-submit-memories');
         if (!getMemoriesButton || !checkbox) return;
 
-        const submitButton = document.querySelector('button[data-testid="send-button"], button[aria-label="Send Message"]');
+        const submitButton = document.querySelector(`${CHATGPT_SELECTORS.SUBMIT_BUTTON}, ${CLAUDE_SELECTORS.SUBMIT_BUTTON}`);
         getMemoriesButton.disabled = !submitButton || submitButton.disabled;
         
         if (checkbox.checked && submitButton) {
@@ -564,8 +577,8 @@
         container.appendChild(createMemoriesButton());
 
         const target = 
-            document.querySelector('fieldset') ||
-            document.querySelector('form.w-full .relative.flex.h-full');
+            document.querySelector(CHATGPT_SELECTORS.FORM) || 
+            document.querySelector(CLAUDE_SELECTORS.FORM);
 
         if (target) {
             target.parentNode.insertBefore(container, target);
@@ -595,7 +608,7 @@
         await getAndInsertMemories(memoriesButton);
         
         setTimeout(() => {
-            const submitButton = document.querySelector('button[data-testid="send-button"], button[aria-label="Send Message"]');
+            const submitButton = document.querySelector(`${CHATGPT_SELECTORS.SUBMIT_BUTTON}, ${CLAUDE_SELECTORS.SUBMIT_BUTTON}`);
             if (submitButton && !submitButton.disabled) {
                 submitButton.click();
                 memoriesButton.disabled = false;
@@ -690,8 +703,7 @@
 
             mutations.forEach(mutation => {
                 if (mutation.type === 'childList') {
-                    const submitButton = document.querySelector('button[data-testid="send-button"]') || 
-                                       document.querySelector('button[aria-label="Send Message"]');
+                    const submitButton = document.querySelector(`${CHATGPT_SELECTORS.SUBMIT_BUTTON}, ${CLAUDE_SELECTORS.SUBMIT_BUTTON}`);
                     if (submitButton) {
                         submitButton.style.visibility = 'hidden';
                         submitButton.style.opacity = '0';
