@@ -5,7 +5,8 @@ if (window.innerWidth <= 600) { // Popup mode detection
   document.body.classList.add('popup-mode');
 }
 
-import { handleSignIn, handleSignOut, onAuthStateChanged } from './auth.js';
+// Remove direct import of auth.js
+// import { handleSignIn, handleSignOut, onAuthStateChanged } from './auth.js';
 
 // Add these variables at the top of the file
 let currentPage = 1;
@@ -256,22 +257,52 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Handle Sign-In
     signinButton.addEventListener('click', () => {
-        handleSignIn().catch(error => {
-            console.error(error);
-            alert('Sign-in failed. Please try again.');
-        });
+        // Use background script for authentication
+        chrome.runtime.sendMessage({ type: 'SIGN_IN' })
+            .then(response => {
+                if (response.status !== 'success') {
+                    throw new Error(response.message || 'Sign-in failed');
+                }
+            })
+            .catch(error => {
+                console.error(error);
+                alert('Sign-in failed. Please try again.');
+            });
     });
 
     // Handle Sign-Out
     signoutButton.addEventListener('click', () => {
-        handleSignOut();
+        // Use background script for authentication
+        chrome.runtime.sendMessage({ type: 'SIGN_OUT' })
+            .catch(error => {
+                console.error(error);
+                alert('Sign-out failed. Please try again.');
+            });
     });
 
-    // Listen for auth state changes
-    onAuthStateChanged(user => {
+    // Get initial auth state from background script
+    chrome.runtime.sendMessage({ type: 'GET_AUTH_STATE' })
+        .then(response => {
+            if (response.status === 'success') {
+                updateAuthUI(response.user);
+            }
+        })
+        .catch(error => {
+            console.error('Error getting auth state:', error);
+        });
+
+    // Listen for auth state changes from background script
+    chrome.runtime.onMessage.addListener((message) => {
+        if (message.type === 'AUTH_STATE_CHANGED') {
+            updateAuthUI(message.user);
+        }
+    });
+
+    // Function to update UI based on auth state
+    function updateAuthUI(user) {
         if (user) {
             // User is signed in
-            const username = user.email.split('@')[0];
+            const username = user.displayName || user.email.split('@')[0];
             userGreeting.textContent = `Hi, ${username}`;
             userProfile.style.display = 'flex';
             signinButton.style.display = 'none';
@@ -280,7 +311,7 @@ document.addEventListener('DOMContentLoaded', function() {
             userProfile.style.display = 'none';
             signinButton.style.display = 'block';
         }
-    });
+    }
 
     const allMemoriesContainer = document.getElementById('all-memories');
     const memoryCountElement = document.getElementById('memory-count');

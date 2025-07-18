@@ -4,6 +4,10 @@ import { initDB, saveMemory, getAllMemories, searchMemories, deleteMemory, editM
 import { getEmbedding } from './embeddingService.js';
 import { interceptNetworkRequests } from './networkInterceptor.js';
 import { extractInfoWithGemini } from './memoryExtractor.js';
+import { handleSignIn, handleSignOut, onAuthStateChanged } from './auth.js';
+
+// Global variable to store current user
+let currentUser = null;
 
 // Initialize the extension when installed
 chrome.runtime.onInstalled.addListener(() => {
@@ -13,6 +17,39 @@ chrome.runtime.onInstalled.addListener(() => {
             chrome.storage.local.set({ autoSubmitEnabled: false });
         }
     });
+});
+
+// Listen for auth state changes
+onAuthStateChanged((user) => {
+    if (user) {
+        // User is signed in
+        currentUser = {
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName || user.email.split('@')[0]
+        };
+        console.log('User signed in:', currentUser);
+        
+        // Broadcast auth state to any open popup or content scripts
+        chrome.runtime.sendMessage({ 
+            type: 'AUTH_STATE_CHANGED', 
+            user: currentUser 
+        }).catch(() => {
+            // Ignore errors when no listeners
+        });
+    } else {
+        // User is signed out
+        currentUser = null;
+        console.log('User signed out');
+        
+        // Broadcast auth state to any open popup or content scripts
+        chrome.runtime.sendMessage({ 
+            type: 'AUTH_STATE_CHANGED', 
+            user: null 
+        }).catch(() => {
+            // Ignore errors when no listeners
+        });
+    }
 });
 
 // Ensure content script is loaded before sending messages
@@ -35,6 +72,43 @@ interceptNetworkRequests();
 // Listen for messages from contentScript.js and popup.js
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     console.log('Received message:', request);
+
+    // Handle authentication requests
+    if (request.type === 'SIGN_IN') {
+        handleSignIn()
+            .then(user => {
+                sendResponse({ 
+                    status: 'success', 
+                    user: {
+                        uid: user.uid,
+                        email: user.email,
+                        displayName: user.displayName || user.email.split('@')[0]
+                    }
+                });
+            })
+            .catch(error => {
+                console.error('Sign-in error:', error);
+                sendResponse({ status: 'error', message: 'Failed to sign in.' });
+            });
+        return true;
+    }
+
+    if (request.type === 'SIGN_OUT') {
+        handleSignOut()
+            .then(() => {
+                sendResponse({ status: 'success' });
+            })
+            .catch(error => {
+                console.error('Sign-out error:', error);
+                sendResponse({ status: 'error', message: 'Failed to sign out.' });
+            });
+        return true;
+    }
+
+    if (request.type === 'GET_AUTH_STATE') {
+        sendResponse({ status: 'success', user: currentUser });
+        return true;
+    }
 
     if (request.type === 'SEARCH_MEMORIES') {
         getEmbedding(request.query)
