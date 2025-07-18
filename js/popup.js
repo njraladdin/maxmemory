@@ -1,5 +1,12 @@
 // popup.js 
 
+// Add this at the top of the file
+if (window.innerWidth <= 600) { // Popup mode detection
+  document.body.classList.add('popup-mode');
+}
+
+import { handleSignIn, handleSignOut, onAuthStateChanged } from './auth.js';
+
 // Add these variables at the top of the file
 let currentPage = 1;
 const itemsPerPage = 50;
@@ -241,6 +248,40 @@ document.getElementById('sort-memories').addEventListener('change', loadAllMemor
 
 // Initial load of memories when the popup is opened
 document.addEventListener('DOMContentLoaded', function() {
+    // Auth elements
+    const signinButton = document.getElementById('signin-button');
+    const signoutButton = document.getElementById('signout-button');
+    const userProfile = document.getElementById('user-profile');
+    const userGreeting = document.getElementById('user-greeting');
+
+    // Handle Sign-In
+    signinButton.addEventListener('click', () => {
+        handleSignIn().catch(error => {
+            console.error(error);
+            alert('Sign-in failed. Please try again.');
+        });
+    });
+
+    // Handle Sign-Out
+    signoutButton.addEventListener('click', () => {
+        handleSignOut();
+    });
+
+    // Listen for auth state changes
+    onAuthStateChanged(user => {
+        if (user) {
+            // User is signed in
+            const username = user.email.split('@')[0];
+            userGreeting.textContent = `Hi, ${username}`;
+            userProfile.style.display = 'flex';
+            signinButton.style.display = 'none';
+        } else {
+            // User is signed out
+            userProfile.style.display = 'none';
+            signinButton.style.display = 'block';
+        }
+    });
+
     const allMemoriesContainer = document.getElementById('all-memories');
     const memoryCountElement = document.getElementById('memory-count');
     const sortSelect = document.getElementById('sort-memories');

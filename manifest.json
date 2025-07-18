@@ -12,7 +12,8 @@
     "permissions": [
         "storage",
         "tabs",
-        "webRequest"
+        "webRequest",
+        "identity"
     ],
     "host_permissions": [
         "https://chatgpt.com/*",
@@ -41,5 +42,15 @@
         "js": ["js/icons.js", "js/contentScript.js"],
         "type": "module"
       }
-    ]
+    ],
+    "oauth2": {
+      "client_id": "58371433289-d4kk1hp8605me5o53cbcn1mbkt0psrvn.apps.googleusercontent.com",
+      "scopes": [
+        "https://www.googleapis.com/auth/userinfo.email",
+        "https://www.googleapis.com/auth/userinfo.profile"
+      ]
+    },
+    "content_security_policy": {
+      "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://www.googleapis.com https://maxmemory-67d43.firebaseapp.com https://identitytoolkit.googleapis.com https://accounts.google.com;"
+    }
 }
