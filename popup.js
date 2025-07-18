@@ -567,7 +567,7 @@ document.addEventListener('DOMContentLoaded', function() {
         helpText.innerHTML = `
             <div style="margin-bottom: 16px;">
                 <p style="font-size: 14px; color: #374151; margin-bottom: 8px;">
-                    Memory Vault uses Google's Gemini API for creating and managing memories.
+                    MaxMemory uses Google's Gemini API for creating and managing memories.
                 </p>
                 <p style="font-size: 14px; color: #374151; margin-bottom: 8px;">
                     To get started:

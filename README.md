@@ -1,7 +1,7 @@
 <div align="center">
-  <img src="icons/icon128.png" alt="Memory Vault Logo" width="128" height="128">
+  <img src="icons/icon128.png" alt="MaxMemory Logo" width="128" height="128">
 
-  # Memory Vault
+  # MaxMemory
   
   <h3>Infinite Memory for AI Chatbots 🧠</h3>
 
@@ -15,7 +15,7 @@
 
 ## Overview
 
-Memory Vault enables ChatGPT and Claude to remember your memories past conversations, providing context-aware responses by seamlessly injecting relevant memories from your chat history into new conversations.
+MaxMemory enables ChatGPT and Claude to remember your memories past conversations, providing context-aware responses by seamlessly injecting relevant memories from your chat history into new conversations.
 
 ## ✨ Features
 
@@ -49,4 +49,4 @@ Install directly from the [Chrome Web Store](https://chromewebstore.google.com/d
   <img src="https://img.shields.io/badge/Claude-black?style=for-the-badge&logo=anthropic&logoColor=white" alt="Claude" />
 </p>
 
-Memory Vault transforms these chatbots into powerful personal assistants that truly understand your context and history.
+MaxMemory transforms these chatbots into powerful personal assistants that truly understand your context and history.

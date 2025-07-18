@@ -1,4 +1,4 @@
-// memoryStorage.js - Module for memory vault storage operations
+// memoryStorage.js - Module for MaxMemory storage operations
 
 import { processMemoriesForRelevance, MEMORY_SEARCH_THRESHOLD } from './memoryUtils.js';
 

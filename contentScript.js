@@ -761,13 +761,13 @@
     const init = () => {
         // Prevent multiple initializations
         if (window.memoryVaultInitialized) {
-            console.log('Memory Vault already initialized on this page, skipping');
+            console.log('MaxMemory already initialized on this page, skipping');
             return;
         }
         
         // Flag to track initialization state
         window.memoryVaultInitialized = true;
-        console.log('Initializing Memory Vault extension');
+        console.log('Initializing MaxMemory extension');
         
         // Wait for input box before initializing
         const inputBox = getInputBox();

@@ -5,3 +5,4 @@
 - payment: integrate gumroad payment, update accounts as paid 
 
 - backup memories: backup memories on the cloud, link them to your account, fetch memories, use proper vector database
+- analytics : add way to better track what users are doing, which sites are they using the extension on
