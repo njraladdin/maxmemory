@@ -19,7 +19,10 @@ async function saveMemory() {
     console.log('Sending SAVE_MEMORY request with text:', text);
 
     try {
-        const response = await chrome.runtime.sendMessage({ type: 'SAVE_MEMORY', text });
+        const response = await chrome.runtime.sendMessage({ 
+            type: 'SAVE_MEMORY', 
+            text
+        });
 
         console.log('Received response for SAVE_MEMORY:', response);
 
@@ -35,12 +38,73 @@ async function saveMemory() {
     }
 }
 
+// Function to load all memory groups
+async function loadAllGroups() {
+    try {
+        const response = await chrome.runtime.sendMessage({ type: 'GET_ALL_GROUPS' });
+        
+        if (response && response.status === 'success' && Array.isArray(response.groups)) {
+            // Update group selectors
+            const groupSelectors = document.querySelectorAll('.memory-group-select');
+            
+            groupSelectors.forEach(selector => {
+                // Save current selection
+                const currentValue = selector.value;
+                
+                // Clear all options except the create new group option
+                while (selector.options.length > 0) {
+                    selector.remove(0);
+                }
+                
+                // Add Global group
+                const globalOption = document.createElement('option');
+                globalOption.value = 'Global';
+                globalOption.textContent = 'Global (All memories)';
+                selector.appendChild(globalOption);
+                
+                // Add all groups
+                response.groups.forEach(group => {
+                    if (group !== 'Global') {
+                        const option = document.createElement('option');
+                        option.value = group;
+                        option.textContent = group;
+                        selector.appendChild(option);
+                    }
+                });
+                
+                // Add create new group option
+                const newOption = document.createElement('option');
+                newOption.value = '__new__';
+                newOption.textContent = '+ Create New Group...';
+                selector.appendChild(newOption);
+                
+                // Restore selection or default to active group
+                if (currentValue && response.groups.includes(currentValue)) {
+                    selector.value = currentValue;
+                } else {
+                    selector.value = 'Global'; // Default to Global
+                }
+            });
+            
+            return response.groups;
+        } else {
+            console.warn('Unexpected response structure:', response);
+            throw new Error(response?.message || 'Unknown error.');
+        }
+    } catch (error) {
+        console.error('Error loading groups:', error);
+        return ['Global'];
+    }
+}
+
 // Function to load and display all memories by sending a message to background.js
 async function loadAllMemories() {
     console.log('Initiating GET_ALL_MEMORIES request');
 
     try {
-        const response = await chrome.runtime.sendMessage({ type: 'GET_ALL_MEMORIES' });
+        const response = await chrome.runtime.sendMessage({ 
+            type: 'GET_ALL_MEMORIES'
+        });
 
         console.log('Received response for GET_ALL_MEMORIES:', response);
 
@@ -72,6 +136,53 @@ async function loadAllMemories() {
     } catch (error) {
         console.error('Error loading memories:', error);
         alert(`Error loading memories: ${error.message ?? 'Unknown error'}`);
+    }
+}
+
+// Function to create a new group
+async function createNewGroup() {
+    const groupName = prompt('Enter a name for the new memory group:');
+    
+    if (!groupName || groupName.trim() === '') {
+        return null;
+    }
+    
+    if (groupName.toLowerCase() === 'global') {
+        alert('Cannot create a group named "Global" as it is reserved.');
+        return null;
+    }
+    
+    // Add group and refresh
+    await loadAllGroups();
+    return groupName.trim();
+}
+
+// Function to handle group selector changes
+function handleGroupSelectorChange(selector) {
+    if (selector.value === '__new__') {
+        createNewGroup().then(newGroup => {
+            if (newGroup) {
+                // Add the new group to all selectors
+                loadAllGroups().then(() => {
+                    // Set this selector to the new group
+                    selector.value = newGroup;
+                    
+                    // If this is the filter dropdown, update active group and reload
+                    if (selector.id === 'group-filter') {
+                        // activeGroup = newGroup; // This variable is removed
+                        loadAllMemories();
+                    }
+                });
+            } else {
+                // Revert to previous selection
+                selector.value = 'Global'; // Default to Global
+            }
+        });
+    } else if (selector.id === 'group-filter') {
+        // Update active group and reload memories
+        // activeGroup = selector.value; // This variable is removed
+        currentPage = 1; // Reset to first page
+        loadAllMemories();
     }
 }
 
@@ -136,9 +247,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Add event listeners
     sortSelect.addEventListener('change', loadAllMemories);
-    
-    // Initial load
-    loadAllMemories();
 
     // Add API key related listeners
     document.getElementById('save-api-key').addEventListener('click', saveApiKey);
@@ -180,7 +288,7 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             const response = await chrome.runtime.sendMessage({ 
                 type: 'SAVE_MEMORY', 
-                text: text 
+                text: text
             });
 
             if (response.status === 'success') {
@@ -233,30 +341,8 @@ document.addEventListener('DOMContentLoaded', function() {
         loadAllMemories();
     });
 
-    // Add API key accordion functionality
-    const apiKeyHeader = document.getElementById('api-key-header');
-    const apiKeyContent = document.getElementById('api-key-content');
-    const apiKeySection = document.getElementById('api-key-section');
-    
-    apiKeyHeader.addEventListener('click', function() {
-        // Get the current API key
-        chrome.storage.local.get('google_api_key', function(result) {
-            const apiKey = result.google_api_key;
-            
-            // Only allow toggling if API key exists
-            if (apiKey) {
-                apiKeyContent.classList.toggle('collapsed');
-                apiKeySection.classList.toggle('expanded');
-                const isExpanded = !apiKeyContent.classList.contains('collapsed');
-                rotateToggleIcon(isExpanded);
-            } else {
-                // If no API key, ensure it stays open
-                apiKeyContent.classList.remove('collapsed');
-                apiKeySection.classList.add('expanded');
-                rotateToggleIcon(true);
-            }
-        });
-    });
+    // Initial memory load
+    loadAllMemories();
 });
 
 // Update the saveApiKey function

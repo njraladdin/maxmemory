@@ -8,7 +8,7 @@ import { extractInfoWithGemini } from './memoryExtractor.js';
 // Initialize the extension when installed
 chrome.runtime.onInstalled.addListener(() => {
     // Initialize the autoSubmitEnabled state if it doesn't exist
-    chrome.storage.local.get('autoSubmitEnabled', (result) => {
+    chrome.storage.local.get(['autoSubmitEnabled'], (result) => {
         if (result.autoSubmitEnabled === undefined) {
             chrome.storage.local.set({ autoSubmitEnabled: false });
         }

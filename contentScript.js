@@ -72,8 +72,6 @@
             min-height: 40px;
         }
 
-
-
         /* Ensure consistent border color in both chat and input */
         .memory-section,
         [contenteditable="true"] p:first-of-type {
@@ -213,6 +211,15 @@
     const createObserver = (callback, config) => new MutationObserver(callback).observe(document.body, config);
 
     const observeDOM = () => {
+        // Prevent multiple observers
+        if (window.memoryVaultObserversInitialized) {
+            console.log('DOM observers already initialized, skipping');
+            return;
+        }
+        
+        window.memoryVaultObserversInitialized = true;
+        console.log('Initializing DOM observers');
+        
         // Observer for content changes
         createObserver(() => {
             addGetMemoriesButton();
@@ -239,7 +246,7 @@
             button.disabled = true;
             button.classList.add('loading');
 
-            const result = await chrome.storage.local.get('google_api_key');
+            const result = await chrome.storage.local.get(['google_api_key']);
             if (!result.google_api_key) {
                 alert('Please set your Google API key in the extension popup first.');
                 return;
@@ -303,12 +310,13 @@
         } catch (error) {
             console.error('Error fetching memories:', error);
             alert('Error fetching memories. Please try again.');
+        } finally {
             button.disabled = false;
             button.classList.remove('loading');
         }
     };
 
-    const createMemoriesButton = () => {
+    const createMemoriesButton = async () => {
         const container = document.createElement('div');
         container.style.display = 'flex';
         container.style.alignItems = 'center';
@@ -423,11 +431,6 @@
         settingsButton.addEventListener('click', () => {
             chrome.runtime.sendMessage({ type: 'OPEN_POPUP' });
         });
-
-        // Assemble the settings button container
-        settingsButtonContainer.appendChild(settingsButton);
-        settingsButtonContainer.appendChild(notificationDot);
-        settingsButtonContainer.appendChild(tooltip);
 
         // Create button
         const button = document.createElement('button');
@@ -552,7 +555,7 @@
         switchLabel.appendChild(slider);
         leftContainer.appendChild(switchLabel);
         leftContainer.appendChild(label);
-        leftContainer.appendChild(settingsButtonContainer);  // Use container instead of button
+        leftContainer.appendChild(settingsButtonContainer);
         container.appendChild(leftContainer);
         container.appendChild(button);
 
@@ -560,35 +563,62 @@
     };
 
     const addGetMemoriesButton = () => {
-        // If button already exists, don't add it again
-        if (document.getElementById('get-memories-button')) return;
+        // Clear any previous timer to avoid multiple attempts
+        if (window.memoryVaultButtonTimer) {
+            clearTimeout(window.memoryVaultButtonTimer);
+        }
+
+        // Use a more specific container ID to check if the button already exists
+        if (document.getElementById('memory-vault-container')) {
+            console.log('Memory vault container already exists, skipping creation');
+            return; // UI components already added
+        }
 
         // Check if input box exists
         const inputBox = getInputBox();
         if (!inputBox) {
             // If input box isn't ready, try again in a short while
-            setTimeout(addGetMemoriesButton, 500);
+            window.memoryVaultButtonTimer = setTimeout(addGetMemoriesButton, 500);
             return;
         }
 
-        const container = document.createElement('div');
-        container.style.display = 'flex';
-        container.style.marginBottom = '12px';
-        container.appendChild(createMemoriesButton());
+        // Add a slight delay to avoid race conditions between tabs
+        window.memoryVaultButtonTimer = setTimeout(() => {
+            // Double-check again after the delay to make absolutely sure
+            if (document.getElementById('memory-vault-container')) {
+                console.log('Memory vault container already exists (second check), skipping creation');
+                return;
+            }
 
-        const target = 
-            document.querySelector(CHATGPT_SELECTORS.FORM) || 
-            document.querySelector(CLAUDE_SELECTORS.FORM);
+            console.log('Creating memory vault container');
+            const container = document.createElement('div');
+            container.id = 'memory-vault-container'; // Add a specific ID to the container
+            container.style.display = 'flex';
+            container.style.marginBottom = '12px';
+            
+            createMemoriesButton().then(memoriesButtonContainer => {
+                // Final check before appending to DOM
+                if (document.getElementById('memory-vault-container')) {
+                    console.log('Memory vault container already exists (final check), skipping creation');
+                    return;
+                }
+                
+                container.appendChild(memoriesButtonContainer);
+                
+                const target = 
+                    document.querySelector(CHATGPT_SELECTORS.FORM) || 
+                    document.querySelector(CLAUDE_SELECTORS.FORM);
 
-        if (target) {
-            target.parentNode.insertBefore(container, target);
-            syncMemoriesButtonState();
-        } else {
-            // If target container isn't ready, try again
-            setTimeout(addGetMemoriesButton, 500);
-        }
+                if (target) {
+                    target.parentNode.insertBefore(container, target);
+                    syncMemoriesButtonState();
+                } else {
+                    // If target container isn't ready, try again
+                    setTimeout(addGetMemoriesButton, 500);
+                }
+            });
+        }, 100); // Short delay to avoid race conditions
     };
-
 
     const handleEnterKey = async (event) => {
         const checkbox = document.getElementById('auto-submit-memories');
@@ -697,6 +727,15 @@
 
     // Add an observer specifically for the submit button
     const observeSubmitButton = () => {
+        // Prevent multiple observers
+        if (window.memoryVaultSubmitObserverInitialized) {
+            console.log('Submit button observer already initialized, skipping');
+            return;
+        }
+        
+        window.memoryVaultSubmitObserverInitialized = true;
+        console.log('Initializing submit button observer');
+        
         const callback = (mutations) => {
             const checkbox = document.getElementById('auto-submit-memories');
             if (!checkbox?.checked) return;
@@ -720,10 +759,21 @@
     };
 
     const init = () => {
+        // Prevent multiple initializations
+        if (window.memoryVaultInitialized) {
+            console.log('Memory Vault already initialized on this page, skipping');
+            return;
+        }
+        
+        // Flag to track initialization state
+        window.memoryVaultInitialized = true;
+        console.log('Initializing Memory Vault extension');
+        
         // Wait for input box before initializing
         const inputBox = getInputBox();
         if (!inputBox) {
             console.log('Input box not found, retrying initialization...');
+            window.memoryVaultInitialized = false; // Reset flag to allow retry
             setTimeout(init, 500);
             return;
         }

@@ -4,31 +4,44 @@ import { processMemoriesForRelevance, MEMORY_SEARCH_THRESHOLD } from './memoryUt
 
 // Configuration constants
 const DB_NAME = 'MemoryVaultDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Use the highest version to avoid version errors
 const STORE_NAME = 'memories';
 
 // Initialize IndexedDB
 async function initDB() {
     console.log('Initializing IndexedDB');
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-        request.onerror = () => {
-            console.error('Error opening IndexedDB:', request.error);
-            reject(request.error);
-        };
-        request.onsuccess = () => {
-            console.log('IndexedDB initialized successfully');
-            resolve(request.result);
-        };
-
-        request.onupgradeneeded = (event) => {
-            const db = event.target.result;
-            if (!db.objectStoreNames.contains(STORE_NAME)) {
-                db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
-                console.log(`Object store "${STORE_NAME}" created`);
-            }
-        };
+        let openRequest;
+        try {
+            // Try opening with the correct version
+            openRequest = indexedDB.open(DB_NAME, DB_VERSION);
+            
+            openRequest.onerror = (event) => {
+                console.error('Error opening IndexedDB:', event.target.error);
+                reject(event.target.error);
+            };
+            
+            openRequest.onsuccess = () => {
+                console.log('IndexedDB initialized successfully');
+                resolve(openRequest.result);
+            };
+            
+            openRequest.onupgradeneeded = (event) => {
+                const db = event.target.result;
+                const oldVersion = event.oldVersion;
+                
+                console.log(`Upgrading database from version ${oldVersion} to ${DB_VERSION}`);
+                
+                // Create store if it doesn't exist
+                if (!db.objectStoreNames.contains(STORE_NAME)) {
+                    db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+                    console.log(`Object store "${STORE_NAME}" created`);
+                }
+            };
+        } catch (error) {
+            console.error('Exception during IndexedDB initialization:', error);
+            reject(error);
+        }
     });
 }
 
@@ -59,7 +72,7 @@ async function saveMemory(text, embedding) {
 
 // Get all memories
 async function getAllMemories() {
-    console.log('Fetching all memories from IndexedDB');
+    console.log('Fetching memories from IndexedDB');
     const db = await initDB();
     const transaction = db.transaction([STORE_NAME], 'readonly');
     const store = transaction.objectStore(STORE_NAME);
@@ -67,7 +80,7 @@ async function getAllMemories() {
     return new Promise((resolve, reject) => {
         const request = store.getAll();
         request.onsuccess = () => {
-            const memories = request.result;
+            let memories = request.result;
             console.log(`Fetched ${memories.length} memories from IndexedDB`);
             
             // Debug: Log ID types for the first few memories
@@ -98,7 +111,7 @@ async function searchMemories(searchEmbedding, queryText, threshold = MEMORY_SEA
         const request = store.getAll();
 
         request.onsuccess = () => {
-            const memories = request.result;
+            let memories = request.result;
             console.log(`Retrieved ${memories.length} memories from IndexedDB`);
             
             // Process memories for relevance scores using the utility function
