@@ -569,7 +569,7 @@
         }
 
         // Use a more specific container ID to check if the button already exists
-        if (document.getElementById('memory-vault-container')) {
+        if (document.getElementById('maxmemory-container')) {
             console.log('Memory vault container already exists, skipping creation');
             return; // UI components already added
         }
@@ -585,20 +585,20 @@
         // Add a slight delay to avoid race conditions between tabs
         window.memoryVaultButtonTimer = setTimeout(() => {
             // Double-check again after the delay to make absolutely sure
-            if (document.getElementById('memory-vault-container')) {
+            if (document.getElementById('maxmemory-container')) {
                 console.log('Memory vault container already exists (second check), skipping creation');
                 return;
             }
 
             console.log('Creating memory vault container');
             const container = document.createElement('div');
-            container.id = 'memory-vault-container'; // Add a specific ID to the container
+            container.id = 'maxmemory-container'; // Add a specific ID to the container
             container.style.display = 'flex';
             container.style.marginBottom = '12px';
             
             createMemoriesButton().then(memoriesButtonContainer => {
                 // Final check before appending to DOM
-                if (document.getElementById('memory-vault-container')) {
+                if (document.getElementById('maxmemory-container')) {
                     console.log('Memory vault container already exists (final check), skipping creation');
                     return;
                 }
