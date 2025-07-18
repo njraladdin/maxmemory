@@ -51,6 +51,6 @@
       ]
     },
     "content_security_policy": {
-      "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://www.googleapis.com https://maxmemory-67d43.firebaseapp.com https://identitytoolkit.googleapis.com https://accounts.google.com;"
+      "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://www.googleapis.com https://maxmemory-67d43.firebaseapp.com https://identitytoolkit.googleapis.com https://accounts.google.com https://firestore.googleapis.com https://*.firebaseio.com https://securetoken.googleapis.com;"
     }
 }

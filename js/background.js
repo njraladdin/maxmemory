@@ -5,6 +5,7 @@ import { getEmbedding } from './embeddingService.js';
 import { interceptNetworkRequests } from './networkInterceptor.js';
 import { extractInfoWithGemini } from './memoryExtractor.js';
 import { handleSignIn, handleSignOut, onAuthStateChanged } from './auth.js';
+import { saveUserToFirestore, getUserData } from './firestoreService.js';
 
 // Global variable to store current user
 let currentUser = null;
@@ -20,23 +21,54 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 // Listen for auth state changes
-onAuthStateChanged((user) => {
+onAuthStateChanged(async (user) => {
     if (user) {
         // User is signed in
-        currentUser = {
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName || user.email.split('@')[0]
-        };
-        console.log('User signed in:', currentUser);
-        
-        // Broadcast auth state to any open popup or content scripts
-        chrome.runtime.sendMessage({ 
-            type: 'AUTH_STATE_CHANGED', 
-            user: currentUser 
-        }).catch(() => {
-            // Ignore errors when no listeners
-        });
+        try {
+            // Save user to Firestore
+            await saveUserToFirestore(user);
+            
+            // Get additional user data from Firestore (like subscription status)
+            const userData = await getUserData(user.uid);
+            
+            // Update currentUser with combined data
+            currentUser = {
+                uid: user.uid,
+                email: user.email,
+                displayName: user.displayName || user.email.split('@')[0],
+                isPaid: userData?.isPaid || false,
+                subscriptionType: userData?.subscriptionType || null
+            };
+            
+            console.log('User signed in with data:', currentUser);
+            
+            // Broadcast auth state to any open popup or content scripts
+            chrome.runtime.sendMessage({ 
+                type: 'AUTH_STATE_CHANGED', 
+                user: currentUser 
+            }).catch(() => {
+                // Ignore errors when no listeners
+            });
+        } catch (error) {
+            console.error('Error processing user sign-in:', error);
+            
+            // Still update basic user info even if Firestore fails
+            currentUser = {
+                uid: user.uid,
+                email: user.email,
+                displayName: user.displayName || user.email.split('@')[0],
+                isPaid: false,
+                subscriptionType: null
+            };
+            
+            // Broadcast auth state
+            chrome.runtime.sendMessage({ 
+                type: 'AUTH_STATE_CHANGED', 
+                user: currentUser 
+            }).catch(() => {
+                // Ignore errors when no listeners
+            });
+        }
     } else {
         // User is signed out
         currentUser = null;
@@ -76,15 +108,40 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // Handle authentication requests
     if (request.type === 'SIGN_IN') {
         handleSignIn()
-            .then(user => {
-                sendResponse({ 
-                    status: 'success', 
-                    user: {
-                        uid: user.uid,
-                        email: user.email,
-                        displayName: user.displayName || user.email.split('@')[0]
-                    }
-                });
+            .then(async user => {
+                try {
+                    // Save user to Firestore
+                    await saveUserToFirestore(user);
+                    
+                    // Get additional user data from Firestore
+                    const userData = await getUserData(user.uid);
+                    
+                    // Send response with combined data
+                    sendResponse({ 
+                        status: 'success', 
+                        user: {
+                            uid: user.uid,
+                            email: user.email,
+                            displayName: user.displayName || user.email.split('@')[0],
+                            isPaid: userData?.isPaid || false,
+                            subscriptionType: userData?.subscriptionType || null
+                        }
+                    });
+                } catch (error) {
+                    console.error('Error processing user data after sign-in:', error);
+                    
+                    // Send basic user data if Firestore fails
+                    sendResponse({ 
+                        status: 'success', 
+                        user: {
+                            uid: user.uid,
+                            email: user.email,
+                            displayName: user.displayName || user.email.split('@')[0],
+                            isPaid: false,
+                            subscriptionType: null
+                        }
+                    });
+                }
             })
             .catch(error => {
                 console.error('Sign-in error:', error);
@@ -107,6 +164,38 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     if (request.type === 'GET_AUTH_STATE') {
         sendResponse({ status: 'success', user: currentUser });
+        return true;
+    }
+
+    // Add new handler for subscription status
+    if (request.type === 'GET_SUBSCRIPTION_STATUS') {
+        if (!currentUser || !currentUser.uid) {
+            sendResponse({ status: 'error', message: 'User not authenticated' });
+            return true;
+        }
+        
+        getUserData(currentUser.uid)
+            .then(userData => {
+                if (userData) {
+                    sendResponse({ 
+                        status: 'success', 
+                        isPaid: userData.isPaid || false,
+                        subscriptionType: userData.subscriptionType || null,
+                        subscriptionExpiry: userData.subscriptionExpiry || null
+                    });
+                } else {
+                    sendResponse({ 
+                        status: 'success', 
+                        isPaid: false,
+                        subscriptionType: null,
+                        subscriptionExpiry: null
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error getting subscription status:', error);
+                sendResponse({ status: 'error', message: 'Failed to get subscription status' });
+            });
         return true;
     }
 

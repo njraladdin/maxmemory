@@ -13,6 +13,7 @@ let currentPage = 1;
 const itemsPerPage = 50;
 let totalPages = 1;
 let allMemoriesData = [];
+let currentUserData = null;
 
 // Function to save a memory by sending a message to background.js
 async function saveMemory() {
@@ -263,6 +264,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (response.status !== 'success') {
                     throw new Error(response.message || 'Sign-in failed');
                 }
+                // Store user data
+                currentUserData = response.user;
+                updateSubscriptionUI(currentUserData);
             })
             .catch(error => {
                 console.error(error);
@@ -284,7 +288,11 @@ document.addEventListener('DOMContentLoaded', function() {
     chrome.runtime.sendMessage({ type: 'GET_AUTH_STATE' })
         .then(response => {
             if (response.status === 'success') {
-                updateAuthUI(response.user);
+                currentUserData = response.user;
+                updateAuthUI(currentUserData);
+                if (currentUserData) {
+                    updateSubscriptionUI(currentUserData);
+                }
             }
         })
         .catch(error => {
@@ -294,7 +302,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Listen for auth state changes from background script
     chrome.runtime.onMessage.addListener((message) => {
         if (message.type === 'AUTH_STATE_CHANGED') {
+            currentUserData = message.user;
             updateAuthUI(message.user);
+            if (message.user) {
+                updateSubscriptionUI(message.user);
+            }
         }
     });
 
@@ -306,10 +318,69 @@ document.addEventListener('DOMContentLoaded', function() {
             userGreeting.textContent = `Hi, ${username}`;
             userProfile.style.display = 'flex';
             signinButton.style.display = 'none';
+            
+            // Check if we need to show subscription UI
+            const subscriptionSection = document.getElementById('subscription-section');
+            if (subscriptionSection) {
+                subscriptionSection.style.display = 'block';
+            }
         } else {
             // User is signed out
             userProfile.style.display = 'none';
             signinButton.style.display = 'block';
+            
+            // Hide subscription section when signed out
+            const subscriptionSection = document.getElementById('subscription-section');
+            if (subscriptionSection) {
+                subscriptionSection.style.display = 'none';
+            }
+        }
+    }
+    
+    // Function to update subscription UI
+    function updateSubscriptionUI(user) {
+        // Create subscription section if it doesn't exist
+        let subscriptionSection = document.getElementById('subscription-section');
+        
+        if (!subscriptionSection) {
+            subscriptionSection = document.createElement('div');
+            subscriptionSection.id = 'subscription-section';
+            subscriptionSection.className = 'subscription-section';
+            
+            // Insert after auth section
+            const authSection = document.querySelector('.auth-section');
+            if (authSection && authSection.nextSibling) {
+                authSection.parentNode.insertBefore(subscriptionSection, authSection.nextSibling);
+            } else {
+                document.querySelector('.page-container').appendChild(subscriptionSection);
+            }
+        }
+        
+        // Update subscription content
+        if (user && user.isPaid) {
+            subscriptionSection.innerHTML = `
+                <div class="subscription-badge premium">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>Premium ${user.subscriptionType === 'yearly' ? 'Yearly' : 'Monthly'}</span>
+                </div>
+            `;
+        } else if (user) {
+            subscriptionSection.innerHTML = `
+                <div class="subscription-badge free">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>Free Plan</span>
+                </div>
+                <button id="upgrade-button" class="upgrade-button">Upgrade to Premium</button>
+            `;
+            
+            // Add event listener to upgrade button
+            document.getElementById('upgrade-button').addEventListener('click', () => {
+                window.open('https://helpfromfounder.web.app/maxmemory/upgrade', '_blank');
+            });
         }
     }
 
