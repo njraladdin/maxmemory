@@ -10,9 +10,11 @@
         add subscription status UI to popup, done
 
 - payment: integrate gumroad payment, update accounts as paid 
-        create subscription management page
-        implement webhook for payment processing
+        add authentication to webapp with custom token 
+        add purchase page on web app
+        implement webhook for payment processing in backend and update user subscription status 
         update user subscription status in firestore
+        create subscription management page
 
 - backup memories: backup memories on the cloud, link them to your account, fetch memories, use proper vector database
 - gemini: paid users don't have to use their own gemini key
