@@ -13,9 +13,12 @@
         add authentication to webapp with custom token, done 
         add purchase page on web app, done 
         implement webhook for payment processing in backend and update user subscription status, done 
+        add redirection page after payment 
 
-- backup memories: backup memories on the cloud, link them to your account, fetch memories, use proper vector database
+- backup memories: setup pinecone vector database, backup memories on it for paid users. 
 - gemini: paid users don't have to use their own gemini key
+
+- pricing : add pricing page on both webapp and extension 
 
 - analytics : add way to better track what users are doing, which sites are they using the extension on
 - feedback : setup page on founderline with updated info
