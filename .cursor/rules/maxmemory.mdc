@@ -1,0 +1,5 @@
+---
+alwaysApply: true
+---
+this is running on windows, make sure generated commands are for powershell. 
+the proejct has 3 seperate components: a chrome extension in chrome-extension folder, a nodejs backen in backend folder, and react webapp in webapp folder. 
